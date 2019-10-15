@@ -153,6 +153,6 @@ X, y = make_moons(n_samples=1000, noise=0.05)
 dbscan = DBSCAN(eps=0.2, min_samples=5)
 dbscan.fit(X)
 # print "dbscan.labels_:{}".format(dbscan.labels_)
-# plot_kmeans_clustering(dbscan, X)
+plot_kmeans_clustering(dbscan, X)
 
 
