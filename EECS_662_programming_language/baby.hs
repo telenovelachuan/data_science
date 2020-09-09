@@ -4,13 +4,9 @@
 
 --doubleSmallNumber x = if x > 100 then x  else x*2  
 
-data Exp = Num Int
-       | Exp Plus Exp
-       | Exp :-: Exp
-       | Exp :*: Exp
-       | Exp :/: Exp
-       deriving (Show)
+liftNum f num1 num2 = f num1 num2
 
-eval :: Exp -> Int
-eval (Num a) = a 
-eval (a Plus b) = (eval a) + (eval b)
+test = do {l' <- (1);
+                       r' <- (2);
+                       Just l' + r'}
+
