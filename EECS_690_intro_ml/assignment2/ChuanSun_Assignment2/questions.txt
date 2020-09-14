@@ -1,0 +1,5 @@
+a. Based on accuracy which model is the best one?
+Looking from accuracy, linear regression and Linear Discriminant Analysis model outperform the others, with an accuracy of 0.9667
+
+b. For each of the 6 other models, explain why you think it does not perform as well as the best one.
+- For Naïve Baysian(accuracy 0.96), 
