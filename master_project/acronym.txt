@@ -1,0 +1,19 @@
+SAGE: space-alternating generalized expectation-maximization
+CIR:  channel impulse response
+MAP:  maximum a posterior
+MPC: multipath components
+GBSM: geometry based stochastic model
+FDTD:  fnite-diference time-domain
+GSCM: geometry-based stochastic model
+PL: path loss
+ISI:  inter-symbol interference
+DS: Doppler shift
+CFO: carrier frequency ofset
+CSI:  channel state information
+LSF:  Large-scale fading
+SMF: small-scale fading
+AOD: angle of departure
+RSS: received signal strength
+AMC: automatic modulation classifcation
+DOA: direction of arrival 
+OFDM: Orthogonal Frequency-Division Multiplexing
