@@ -16,7 +16,7 @@ Y = df["label"]
 X = ss.fit_transform(X)
 
 #x, y = load_iris(return_X_y=True)
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=1/3, random_state=0)
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
 
 
 def evaluate_model(model_func, model_name, x_train=X_train, x_test=X_test, y_train=Y_train, y_test=Y_test):
