@@ -1,0 +1,36 @@
+,pathologic_stage,gender,race,count,Percentage
+0,stage i,female,black or african american,1,0.22371364653243847
+1,stage i,female,white,4,0.8948545861297539
+2,stage ia,female,asian,2,0.44742729306487694
+3,stage ia,female,black or african american,14,3.131991051454139
+4,stage ia,female,white,64,14.317673378076062
+5,stage ia,male,black or african american,4,0.8948545861297539
+6,stage ia,male,white,46,10.29082774049217
+7,stage ib,female,asian,2,0.44742729306487694
+8,stage ib,female,black or african american,3,0.6711409395973155
+9,stage ib,female,white,60,13.422818791946309
+10,stage ib,male,asian,1,0.22371364653243847
+11,stage ib,male,black or african american,5,1.1185682326621924
+12,stage ib,male,white,42,9.395973154362416
+13,stage ii,female,black or african american,1,0.22371364653243847
+14,stage iia,female,black or african american,3,0.6711409395973155
+15,stage iia,female,white,18,4.026845637583893
+16,stage iia,male,black or african american,6,1.342281879194631
+17,stage iia,male,white,21,4.697986577181208
+18,stage iib,female,american indian or alaska native,1,0.22371364653243847
+19,stage iib,female,black or african american,2,0.44742729306487694
+20,stage iib,female,white,26,5.8165548098434
+21,stage iib,male,asian,1,0.22371364653243847
+22,stage iib,male,black or african american,3,0.6711409395973155
+23,stage iib,male,white,27,6.040268456375839
+24,stage iiia,female,black or african american,4,0.8948545861297539
+25,stage iiia,female,white,31,6.935123042505593
+26,stage iiia,male,black or african american,3,0.6711409395973155
+27,stage iiia,male,white,24,5.369127516778524
+28,stage iiib,female,white,5,1.1185682326621924
+29,stage iiib,male,white,2,0.44742729306487694
+30,stage iv,female,black or african american,1,0.22371364653243847
+31,stage iv,female,white,7,1.5659955257270695
+32,stage iv,male,asian,2,0.44742729306487694
+33,stage iv,male,black or african american,1,0.22371364653243847
+34,stage iv,male,white,10,2.237136465324385
