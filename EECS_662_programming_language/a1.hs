@@ -76,7 +76,8 @@ evalM e (Id x) = do {
 --evalM _ _ = Nothing
 
 testBBAE :: BBAE -> Bool
-testBBAE _ = True
+testBBAE x = if evalS x == evalM [] x then True else False 
+--testBBAE _ = True
 
 typeofM :: Cont -> BBAE -> (Maybe TBBAE)
 typeofM _ _ = Nothing
