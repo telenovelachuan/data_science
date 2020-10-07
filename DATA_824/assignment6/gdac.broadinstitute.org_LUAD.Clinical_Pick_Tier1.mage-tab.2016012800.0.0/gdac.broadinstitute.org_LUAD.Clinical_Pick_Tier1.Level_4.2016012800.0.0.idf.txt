@@ -1,0 +1,49 @@
+Investigation Title	Clinical_Pick_Tier1
+Experimental Design
+Experimental Design Term Source REF	MGED Ontology
+Experimental Factor Name	LUAD
+Experimental Factor Type
+Experimental Factor Type Term Source REF	MGED Ontology
+
+Person Last Name	Submission
+Person First Name	Broad TCGA GDAC
+Person Mid Initials
+Person Email	tcga_gdac@broadinstitute.org
+Person Phone
+Person Fax
+Person Address	"7 Cambridge Center, Cambridge, MA 02142, USA"
+Person Affiliation	Broad Institute
+Person Roles	submitter
+Person Roles Term Source REF	MGED Ontology
+
+Quality Control Types
+Quality Control Types Term Source REF
+Replicate Type
+Replicate Type Term Source REF
+Normalization Type
+Normalization Term Source REF
+Date of Experiment	2016-02-12 18:42:12.0
+Public Release Date
+
+PubMed ID
+Publication DOI
+Publication Author List
+Publication Title
+Publication Status
+Publication Status Term Source REF
+Experiment Description
+
+Protocol Name	
+Protocol Type	Clinical_Pick_Tier1
+Protocol Description job number 13132313
+Protocol Parameters	.parameters.properties
+Protocol Hardware
+Protocol Software
+Protocol Contact
+Protocol Term Source REF	MGED Ontology
+
+SDRF Files	
+
+Term Source Name	MGED Ontology
+Term Source File	http://mged.sourceforge.net/ontologies/MGEDontology.php
+Term Source Version	1.3.1.1
