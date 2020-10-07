@@ -61,7 +61,15 @@ evalS (And l r) = do {
 evalS (Leq l r) = do {
   (Num l') <- evalS l;
   (Num r') <- evalS r;
-  if l' <=0 || r' <= 0 then  Nothing else return (Boolean (l' <= r'))
+  if l' <=0 || r' <= 0 then Nothing else return (Boolean (l' <= r'))
+}
+evalS (IsZero x) = do {
+  (Num x') <- evalS x;
+  if x' < 0 then Nothing else return (Boolean (x' == 0))
+}
+evalS (If a b c) = do {
+  (Boolean a') <- evalS a;
+  if a' then (evalS b) else (evalS c)
 }
 --evalS _ = Nothing
 
