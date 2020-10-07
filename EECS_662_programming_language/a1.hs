@@ -28,8 +28,31 @@ type Env = [(String,BBAE)]
 
 type Cont = [(String,TBBAE)]
 
+subst :: String -> BBAE -> BBAE ->BBAE
+subst x v (Num n) = (Num n)
+subst x v (Plus l r) = (Plus (subst x v l) (subst x v r))
+subst x v (Minus l r) = (Minus (subst x v l) (subst x v r))
+subst x v (Bind x' v' b') = (Bind x' (subst x v v') (subst x v b'))
+subst x v (Id x') = if x == x' then v else (Id x')
+
 evalS :: BBAE -> (Maybe BBAE)
-evalS _ = Nothing
+evalS (Num x) = Just (Num x)
+evalS (Plus l r) = do {
+  (Num l') <- evalS l;
+  (Num r') <- evalS r;
+  Just (Num (l' + r'))
+}
+evalS (Minus l r) = do {
+  (Num l') <- evalS l;
+  (Num r') <- evalS r;
+  if l' >= r' then return (Num (l' - r')) else Nothing
+}
+evalS (Bind x a b) = do {
+  (Num a') <- evalS a;
+  (evalS (subst x (Num a') b))
+}
+
+--evalS _ = Nothing
 
 evalM :: Env -> BBAE -> (Maybe BBAE)
 evalM _ _ = Nothing
