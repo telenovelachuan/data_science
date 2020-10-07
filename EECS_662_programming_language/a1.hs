@@ -37,6 +37,7 @@ subst x v (Id x') = if x == x' then v else (Id x')
 
 evalS :: BBAE -> (Maybe BBAE)
 evalS (Num x) = Just (Num x)
+evalS (Boolean x) = Just (Boolean x)
 evalS (Plus l r) = do {
   (Num l') <- evalS l;
   (Num r') <- evalS r;
@@ -50,6 +51,17 @@ evalS (Minus l r) = do {
 evalS (Bind x a b) = do {
   (Num a') <- evalS a;
   (evalS (subst x (Num a') b))
+}
+evalS (Id x) = Nothing
+evalS (And l r) = do {
+  (Boolean l') <- evalS l;
+  (Boolean r') <- evalS r;
+  return (Boolean (l' && r'))
+}
+evalS (Leq l r) = do {
+  (Num l') <- evalS l;
+  (Num r') <- evalS r;
+  if l' <=0 || r' <= 0 then  Nothing else return (Boolean (l' <= r'))
 }
 --evalS _ = Nothing
 
@@ -73,6 +85,7 @@ evalM e (Id x) = do {
   v <- lookup x e;
   return v
 }
+
 --evalM _ _ = Nothing
 
 testBBAE :: BBAE -> Bool
