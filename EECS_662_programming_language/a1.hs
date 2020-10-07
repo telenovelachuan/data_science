@@ -75,6 +75,7 @@ evalS (If a b c) = do {
 
 evalM :: Env -> BBAE -> (Maybe BBAE)
 evalM _ (Num x) = Just (Num x)
+evalM _ (Boolean x) = Just (Boolean x)
 evalM e (Plus l r) = do {
   (Num l') <- evalM e l;
   (Num r') <- evalM e r;
@@ -92,6 +93,24 @@ evalM e (Bind x a s) = do {
 evalM e (Id x) = do {
   v <- lookup x e;
   return v
+}
+evalM e (And l r) = do {
+  (Boolean l') <- evalM e l;
+  (Boolean r') <- evalM e r;
+  return (Boolean (l' && r'))
+}
+evalM e (Leq l r) = do {
+  (Num l') <- evalM e l;
+  (Num r') <- evalM e r;
+  if l' <=0 || r' <= 0 then Nothing else return (Boolean (l' <= r'))
+}
+evalM e (IsZero x) = do {
+  (Num x') <- evalM e x;
+  if x' < 0 then Nothing else return (Boolean (x' == 0))
+}
+evalM e (If a b c) = do {
+  (Boolean a') <- evalS a;
+  if a' then (evalM e b) else (evalM e c)
 }
 
 --evalM _ _ = Nothing
