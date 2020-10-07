@@ -51,11 +51,29 @@ evalS (Bind x a b) = do {
   (Num a') <- evalS a;
   (evalS (subst x (Num a') b))
 }
-
 --evalS _ = Nothing
 
 evalM :: Env -> BBAE -> (Maybe BBAE)
-evalM _ _ = Nothing
+evalM _ (Num x) = Just (Num x)
+evalM e (Plus l r) = do {
+  (Num l') <- evalM e l;
+  (Num r') <- evalM e r;
+  Just (Num (l' + r'))
+}
+evalM e (Minus l r) = do {
+  (Num l') <- evalM e l;
+  (Num r') <- evalM e r;
+  if l' >= r' then return (Num (l' - r')) else Nothing
+}
+evalM e (Bind x a s) = do {
+  a' <- evalM e a;
+  (evalM ((x, a'):e) s)
+}
+evalM e (Id x) = do {
+  v <- lookup x e;
+  return v
+}
+--evalM _ _ = Nothing
 
 testBBAE :: BBAE -> Bool
 testBBAE _ = True
