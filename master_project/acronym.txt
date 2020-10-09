@@ -19,3 +19,11 @@ DOA: direction of arrival
 OFDM: Orthogonal Frequency-Division Multiplexing
 GNSS: global navigation satellite systems
 UE: user equipments
+
+
+
+
+
+BCI: brain-computer interface
+EEG: electroencephalography
+AAC: alternative communication
