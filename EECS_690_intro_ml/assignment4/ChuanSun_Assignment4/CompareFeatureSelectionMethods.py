@@ -108,7 +108,7 @@ df_sa_features = df_sa.drop(columns=["label"])
 df_sa_features
 
 
-# In[120]:
+# In[222]:
 
 
 current_features = list(df_features.columns)
@@ -120,6 +120,7 @@ restart_value = 10
 restart_cnt = 0
 current_best = -1
 results = []
+best_features = []
 
 for i in range(iterations):
     _row = [i + 1]
@@ -166,6 +167,7 @@ for i in range(iterations):
         previous_acc = acc
         restart_cnt = 0
         current_best = acc
+        best_features = _current_features
         _row.extend(["-", "-"])
         _status = "Improved"
     else:
@@ -205,6 +207,13 @@ df_result
 
 
 print(df_result)
+
+
+# In[228]:
+
+
+print(f"best features by simulated annealing: {best_features}")
+evaluate_model(lambda : DecisionTreeClassifier(), "Decision Tree", best_features, df_x=df_sa_features[best_features])
 
 
 # In[122]:
@@ -316,36 +325,17 @@ for i in range(iterations):
     print(f"The {str(i)}th iteration, best features: {','.join(best_s)}, highest 5 accuracies: {','.join([str(a) for a in highest_accuracies])}")
 
 
-# In[206]:
+# In[230]:
 
 
-print(highest_accuracies)
-best_sets
-
-
-# In[145]:
-
-
-s1 = set({2,1})
-s2 = set({2,3})
-s1.intersection(s2)
-
-
-# In[207]:
-
-
-",".join(s1)
-
-
-# In[192]:
-
-
-a=[1,5,5,7,8]
-a.index(5)
+index_best = highest_accuracies.index(max(highest_accuracies))
+best_s = list(best_sets[index_best])
+print(f"best features by genetic algorithm: {best_s}")
+evaluate_model(lambda : DecisionTreeClassifier(), "Decision Tree", best_s, df_x=df_sa_features[best_s])
 
 
 # In[ ]:
 
 
-from itertools import combinations
+
 
