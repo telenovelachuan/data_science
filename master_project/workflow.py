@@ -82,6 +82,7 @@ h2[h2 == inf] = 0
 h2[h2 == -inf] = 0
 
 # Execute PCA on h2
+print("Execute PCA...")
 condense_to = 55
 h2_pca = np.empty((h2.shape[0], h2.shape[1], condense_to, h2.shape[3]))
 evrs = []
@@ -135,10 +136,16 @@ def keras_model3(opt=Adam(1e-3), dropout_rate=0.2):
 
 
 print("training keras model3...")
-model0 = keras_model3(opt=Adam(5e-3))
+lr = 5e-3
+epochs = 50
+decay_rate = lr / 50
+model0 = keras_model3(opt=Adam(5e-3, decay=decay_rate))
 earlystopper = EarlyStopping(patience=50, verbose=1)
 #cp = ModelCheckpoint('v1_no_pca.h5', verbose=1, save_best_only=True)
 hist0 = model0.fit(x_train, y_train, epochs=50, validation_data=(x_test, y_test),
                  callbacks=[earlystopper], batch_size=4, verbose=1)
+print("saving model...")
+model0.save('model3.h5')
+print("All done!")
 #val_loss = hist.history['val_loss']
 
