@@ -23,7 +23,7 @@ from tensorflow.keras.optimizers import *
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
 
-CTW_labelled = "~/"
+CTW_labelled = "/users/c693s270/"
 def get_data(data_file):
     
     f = h5py.File(data_file, 'r')
@@ -37,7 +37,7 @@ def get_data(data_file):
 
 # load data from file_1.hdf4
 
-data_file = CTW_labelled+"file_"+str(1)+".hdf5"
+data_file = CTW_labelled + "file_" + str(1) + ".hdf5"
 H_Re, H_Im, SNR, Pos = get_data(data_file)
 print("H_Re is of shape {}".format(H_Re.shape))
 print("H_Im is of shape {}".format(H_Im.shape))
@@ -81,9 +81,23 @@ for d1 in range(512):
 h2[h2 == inf] = 0
 h2[h2 == -inf] = 0
 
+# Execute PCA on h2
+condense_to = 55
+h2_pca = np.empty((h2.shape[0], h2.shape[1], condense_to, h2.shape[3]))
+evrs = []
+for i in range(h2.shape[1]):
+    for j in range(h2.shape[3]):
+        pca = PCA(n_components=condense_to)
+        h2_pca[:, i, :, j] = pca.fit_transform(h2[:, i, :, j])
+        evr = np.cumsum(pca.explained_variance_ratio_)
+        evrs.append(evr)
+
 print("Train-test split the dataset")
 x_train0, x_test0, y_train0, y_test0 = train_test_split(h2, Pos, test_size=0.1, random_state=42)
 #x_train0.shape, y_train0.shape
+print("Train-test split the PCA dataset")
+x_train, x_test, y_train, y_test = train_test_split(h2_pca, Pos, test_size=0.1, random_state=42)
+
 
 def keras_model1(opt=Adam(1e-3)):
     model = Sequential()
@@ -106,15 +120,15 @@ def keras_model1(opt=Adam(1e-3)):
 
 def keras_model3(opt=Adam(1e-3), dropout_rate=0.2):
     model = Sequential()
-    model.add(Dense(960, input_shape=x_train.shape[1:], activation='relu'))
+    model.add(Dense(512, input_shape=x_train.shape[1:], activation='relu'))
     model.add(Flatten())
-    model.add(Dense(860, activation='relu'))
+    model.add(Dense(256, activation='relu'))
     model.add(Dropout(rate=dropout_rate))
-    model.add(Dense(560, activation='relu'))
+    model.add(Dense(128, activation='relu'))
     model.add(Dropout(rate=dropout_rate))
-    model.add(Dense(460, activation='relu'))
+    model.add(Dense(32, activation='relu'))
     model.add(Dropout(rate=dropout_rate))
-    model.add(Dense(360, activation='relu'))
+    model.add(Dense(16, activation='relu'))
     model.add(Dense(3))
     model.compile(loss='mean_squared_error', optimizer=opt)
     return model
@@ -124,7 +138,7 @@ print("training keras model3...")
 model0 = keras_model3(opt=Adam(5e-3))
 earlystopper = EarlyStopping(patience=50, verbose=1)
 #cp = ModelCheckpoint('v1_no_pca.h5', verbose=1, save_best_only=True)
-hist0 = model0.fit(x_train0, y_train0, epochs=50, validation_data=(x_test0, y_test0),
+hist0 = model0.fit(x_train, y_train, epochs=50, validation_data=(x_test, y_test),
                  callbacks=[earlystopper], batch_size=4, verbose=1)
 #val_loss = hist.history['val_loss']
 
