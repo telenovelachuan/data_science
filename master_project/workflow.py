@@ -17,8 +17,8 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 
 from tensorflow.keras.models import Model, Sequential, load_model
-from tensorflow.keras.layers import Input
-from tensorflow.keras.layers import Dense, Dropout, Conv2D, Flatten
+from tensorflow.keras.layers import Input, Activation
+from tensorflow.keras.layers import Dense, Dropout, Conv2D, Flatten, Conv1D, BatchNormalization
 from tensorflow.keras.optimizers import *
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
@@ -99,6 +99,11 @@ x_train0, x_test0, y_train0, y_test0 = train_test_split(h2, Pos, test_size=0.1, 
 print("Train-test split the PCA dataset")
 x_train, x_test, y_train, y_test = train_test_split(h2_pca, Pos, test_size=0.1, random_state=42)
 
+print("Train-test split the data for 1D-CNN")
+h2_pca_shape = h2_pca.shape
+h2_pca_1dcnn = h2_pca.reshape(h2_pca_shape[0], h2_pca_shape[1], -1)
+x_train_1d, x_test_1d, y_train_1d, y_test_1d = train_test_split(h2_pca_1dcnn, Pos, test_size=0.1, random_state=42)
+
 
 def keras_model1(opt=Adam(1e-3)):
     model = Sequential()
@@ -119,7 +124,7 @@ def keras_model1(opt=Adam(1e-3)):
     model.compile(loss='mean_absolute_percentage_error', optimizer=opt) 
     return model
 
-def keras_model3(opt=Adam(1e-3), dropout_rate=0.2):
+def dnn_model(opt=Adam(1e-3), dropout_rate=0.2):
     model = Sequential()
     model.add(Dense(512, input_shape=x_train.shape[1:], activation='relu'))
     model.add(Flatten())
@@ -134,18 +139,42 @@ def keras_model3(opt=Adam(1e-3), dropout_rate=0.2):
     model.compile(loss='mean_squared_error', optimizer=opt)
     return model
 
+def cnn_model1(opt=Adam(1e-3), dropout_rate=0.2):
+    model = Sequential()
+    model.add(Conv1D(16, 16, input_shape=(x_train_1d.shape[1:]), activation='relu'))
+    model.add(Conv1D(32, 16, activation='relu'))
+    model.add(Conv1D(32, 16, activation='relu'))
+    model.add(Flatten())
+    model.add(BatchNormalization())
+    model.add(Dense(512))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+    model.add(Dense(256))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dense(3))
+    model.compile(loss='mean_squared_error', optimizer=opt)
+    return model
+
 
 print("training keras model3...")
 lr = 5e-3
 epochs = 50
 decay_rate = lr / 50
-model0 = keras_model3(opt=Adam(5e-3, decay=decay_rate))
+model0 = dnn_model(opt=Adam(5e-3, decay=decay_rate))
 earlystopper = EarlyStopping(patience=50, verbose=1)
 #cp = ModelCheckpoint('v1_no_pca.h5', verbose=1, save_best_only=True)
 hist0 = model0.fit(x_train, y_train, epochs=50, validation_data=(x_test, y_test),
                  callbacks=[earlystopper], batch_size=4, verbose=1)
-print("saving model...")
-model0.save('model3.h5')
-print("All done!")
+
+print("making predictions & saving results...")
+preds = model0.predict(x_test)
+result = pd.DataFrame(preds, columns=["x", "y", "z"])
+print(f"{len(result)} rows")
+result.to_csv("/tmp/dnn_bs32_preds.csv")
+# print("saving model...")
+# model0.save('model3.h5')
+# print("All done!")
 #val_loss = hist.history['val_loss']
 
