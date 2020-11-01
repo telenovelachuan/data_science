@@ -1,0 +1,13 @@
+.import /Users/macbook/Downloads/KansasCounties.csv county
+.import /Users/macbook/Downloads/kansas_crime.csv crime
+
+1.
+select round(avg(`Violent Crime Rate`),2) from crime join county on crime.County=county.County where Population>10000 and Year=2017;
+
+2.
+update crime set `Violent Crime Rate` = 100 where County='allen' and Year=2017;
+
+3.
+insert into county values ('test', 2019,30000, 151,40000);
+insert into county values ('test', 2019,30000, 151,198.68, 40000);
+
