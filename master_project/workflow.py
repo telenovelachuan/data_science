@@ -17,7 +17,7 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 
 from tensorflow.keras.models import Model, Sequential, load_model
-from tensorflow.keras.layers import Input, Activation
+from tensorflow.keras.layers import Input, Activation, AveragePooling2D, Conv2DTranspose, ZeroPadding2D
 from tensorflow.keras.layers import Dense, Dropout, Conv2D, Flatten, Conv1D, BatchNormalization
 from tensorflow.keras.optimizers import *
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
@@ -81,28 +81,28 @@ for d1 in range(512):
 h2[h2 == inf] = 0
 h2[h2 == -inf] = 0
 
-# Execute PCA on h2
-print("Execute PCA...")
-condense_to = 55
-h2_pca = np.empty((h2.shape[0], h2.shape[1], condense_to, h2.shape[3]))
-evrs = []
-for i in range(h2.shape[1]):
-    for j in range(h2.shape[3]):
-        pca = PCA(n_components=condense_to)
-        h2_pca[:, i, :, j] = pca.fit_transform(h2[:, i, :, j])
-        evr = np.cumsum(pca.explained_variance_ratio_)
-        evrs.append(evr)
+# # Execute PCA on h2
+# print("Execute PCA...")
+# condense_to = 55
+# h2_pca = np.empty((h2.shape[0], h2.shape[1], condense_to, h2.shape[3]))
+# evrs = []
+# for i in range(h2.shape[1]):
+#     for j in range(h2.shape[3]):
+#         pca = PCA(n_components=condense_to)
+#         h2_pca[:, i, :, j] = pca.fit_transform(h2[:, i, :, j])
+#         evr = np.cumsum(pca.explained_variance_ratio_)
+#         evrs.append(evr)
 
 print("Train-test split the dataset")
 x_train0, x_test0, y_train0, y_test0 = train_test_split(h2, Pos, test_size=0.1, random_state=42)
-#x_train0.shape, y_train0.shape
-print("Train-test split the PCA dataset")
-x_train, x_test, y_train, y_test = train_test_split(h2_pca, Pos, test_size=0.1, random_state=42)
 
-print("Train-test split the data for 1D-CNN")
-h2_pca_shape = h2_pca.shape
-h2_pca_1dcnn = h2_pca.reshape(h2_pca_shape[0], h2_pca_shape[1], -1)
-x_train_1d, x_test_1d, y_train_1d, y_test_1d = train_test_split(h2_pca_1dcnn, Pos, test_size=0.1, random_state=42)
+# print("Train-test split the PCA dataset")
+# x_train, x_test, y_train, y_test = train_test_split(h2_pca, Pos, test_size=0.1, random_state=42)
+
+# print("Train-test split the data for 1D-CNN")
+# h2_pca_shape = h2_pca.shape
+# h2_pca_1dcnn = h2_pca.reshape(h2_pca_shape[0], h2_pca_shape[1], -1)
+# x_train_1d, x_test_1d, y_train_1d, y_test_1d = train_test_split(h2_pca_1dcnn, Pos, test_size=0.1, random_state=42)
 
 
 def keras_model1(opt=Adam(1e-3)):
@@ -139,9 +139,9 @@ def dnn_model(opt=Adam(1e-3), dropout_rate=0.2):
     model.compile(loss='mean_squared_error', optimizer=opt)
     return model
 
-def cnn_model1(opt=Adam(1e-3), dropout_rate=0.2):
+def cnn_model1(input_shape, opt=Adam(1e-3), dropout_rate=0.2):
     model = Sequential()
-    model.add(Conv1D(16, 16, input_shape=(x_train_1d.shape[1:]), activation='relu'))
+    model.add(Conv1D(16, 16, input_shape=input_shape, activation='relu'))
     model.add(Conv1D(32, 16, activation='relu'))
     model.add(Conv1D(32, 16, activation='relu'))
     model.add(Flatten())
@@ -158,21 +158,79 @@ def cnn_model1(opt=Adam(1e-3), dropout_rate=0.2):
     return model
 
 
-print("training keras model3...")
+def data_gen(data):
+    for i in range(len(data)):
+        yield (data[i: i+1],data[i: i+1])
+
+def autoencoder():
+    model = Sequential()
+    model.add(Conv2D(128, (5, 5),input_shape=h2.shape[1:], activation='relu', padding='same'))
+    model.add(AveragePooling2D((1, 5)))
+    model.add(Conv2D(32, (3, 3),activation='relu', padding='same'))
+    model.add(AveragePooling2D((1, 5)))
+    model.add(Conv2D(32,(3,3),activation='linear', padding='same'))
+    model.add(Conv2DTranspose(32, (3,3), strides=(1, 1), padding='same', activation='relu'))
+    model.add(Conv2DTranspose(128,(3,3), strides=(1, 5), padding='same', activation='relu'))
+    #model.add(ZeroPadding2D(((0, 0), (2, 1))))
+    model.add(Conv2DTranspose(10, (3, 3) , strides=(1, 5), padding='same', activation='linear'))
+    model.compile(loss='mean_squared_error', optimizer=Adam(1e-3)) 
+    return model
+
+ae = autoencoder()
+# ae.summary()
+
+print("Try AutoEncoder. Train-test split for AutoEncoder...")
+data, data_v  = train_test_split(h2, test_size=0.5, random_state=54) 
+data.shape
+
+print("training AutoEncoder...")
+for i in range(5):
+    ae.fit_generator(data_gen(data),validation_data=data_gen(data_v), epochs=1, steps_per_epoch=len(data),
+                     validation_steps=len(data_v))
+
+print("applying encoder on original data...")
+encoder = Model(ae.input, ae.layers[-5].output)
+h2_ae = encoder.predict(h2)
+h2_ae_shape = h2_ae.shape
+h2_ae_1dcnn = h2_ae.reshape(h2_ae_shape[0], h2_ae_shape[1], -1)
+
+def dnn_ae_model(opt=Adam(1e-3), dropout_rate=0.2):
+    model = Sequential()
+    model.add(Dense(512, input_shape=x_train_ae.shape[1:], activation='relu'))
+    model.add(Flatten())
+    model.add(Dense(256, activation='relu'))
+    model.add(Dropout(rate=dropout_rate))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dropout(rate=dropout_rate))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dropout(rate=dropout_rate))
+    model.add(Dense(16, activation='relu'))
+    model.add(Dense(3))
+    model.compile(loss='mean_squared_error', optimizer=opt)
+    return model
+
+print("train-test splitting ae data...")
+x_train_ae, x_test_ae, y_train_ae, y_test_ae = train_test_split(h2_ae, Pos, test_size=0.1, random_state=42)
+x_train_ae_cnn, x_test_ae_cnn, y_train_ae_cnn, y_test_ae_cnn = train_test_split(h2_ae_1dcnn, Pos, test_size=0.1, random_state=42)
+
+
+
+print("training dnn model on ae...")
 lr = 5e-3
 epochs = 50
 decay_rate = lr / 50
-model0 = dnn_model(opt=Adam(5e-3, decay=decay_rate))
+model_ae = cnn_model1(x_train_ae_cnn.shape[1:], opt=Adam(5e-3, decay=decay_rate))
 earlystopper = EarlyStopping(patience=50, verbose=1)
 #cp = ModelCheckpoint('v1_no_pca.h5', verbose=1, save_best_only=True)
-hist0 = model0.fit(x_train, y_train, epochs=50, validation_data=(x_test, y_test),
+hist_ae = model_ae.fit(x_train_ae_cnn, y_train_ae_cnn, epochs=50, validation_data=(x_test_ae_cnn, y_test_ae_cnn),
                  callbacks=[earlystopper], batch_size=4, verbose=1)
 
 print("making predictions & saving results...")
-preds = model0.predict(x_test)
+preds = model_ae.predict(x_test_ae_cnn)
 result = pd.DataFrame(preds, columns=["x", "y", "z"])
 print(f"{len(result)} rows")
-result.to_csv("/tmp/dnn_bs32_preds.csv")
+result.to_csv("/tmp/cnn_ae_preds.csv")
+print("All done!!")
 # print("saving model...")
 # model0.save('model3.h5')
 # print("All done!")
