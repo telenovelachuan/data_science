@@ -215,7 +215,7 @@ x_train_ae_cnn, x_test_ae_cnn, y_train_ae_cnn, y_test_ae_cnn = train_test_split(
 
 
 
-print("training dnn model on ae...")
+print("training cnn model on ae...")
 lr = 5e-3
 epochs = 50
 decay_rate = lr / 50
@@ -225,6 +225,8 @@ earlystopper = EarlyStopping(patience=50, verbose=1)
 hist_ae = model_ae.fit(x_train_ae_cnn, y_train_ae_cnn, epochs=50, validation_data=(x_test_ae_cnn, y_test_ae_cnn),
                  callbacks=[earlystopper], batch_size=4, verbose=1)
 
+print("saving model...")
+model_ae.save("/tmp/c693s270/model_ae.h5")
 print("making predictions & saving results...")
 preds = model_ae.predict(x_test_ae_cnn)
 result = pd.DataFrame(preds, columns=["x", "y", "z"])
