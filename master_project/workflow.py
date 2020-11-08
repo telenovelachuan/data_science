@@ -21,6 +21,8 @@ from tensorflow.keras.layers import Input, Activation, AveragePooling2D, Conv2DT
 from tensorflow.keras.layers import Dense, Dropout, Conv2D, Flatten, Conv1D, BatchNormalization
 from tensorflow.keras.optimizers import *
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from modAL.models import ActiveLearner
+from modAL.uncertainty import entropy_sampling, margin_sampling, uncertainty_sampling
 
 
 CTW_labelled = "/users/c693s270/"
@@ -213,25 +215,48 @@ print("train-test splitting ae data...")
 x_train_ae, x_test_ae, y_train_ae, y_test_ae = train_test_split(h2_ae, Pos, test_size=0.1, random_state=42)
 x_train_ae_cnn, x_test_ae_cnn, y_train_ae_cnn, y_test_ae_cnn = train_test_split(h2_ae_1dcnn, Pos, test_size=0.1, random_state=42)
 
+print("splitting training data and active learning pool...")
+train_x_al, pool_x_al, train_y_al, pool_y_al = train_test_split(x_train_ae_cnn, y_train_ae_cnn, test_size=0.5, random_state=42)
 
-
-print("training cnn model on ae...")
+print("constructing 1D-CNN model...")
 lr = 5e-3
 epochs = 50
 decay_rate = lr / 50
-model_ae = cnn_model1(x_train_ae_cnn.shape[1:], opt=Adam(5e-3, decay=decay_rate))
-earlystopper = EarlyStopping(patience=50, verbose=1)
-#cp = ModelCheckpoint('v1_no_pca.h5', verbose=1, save_best_only=True)
-hist_ae = model_ae.fit(x_train_ae_cnn, y_train_ae_cnn, epochs=50, validation_data=(x_test_ae_cnn, y_test_ae_cnn),
-                 callbacks=[earlystopper], batch_size=4, verbose=1)
+model_ae = cnn_model1(train_x_al.shape[1:], opt=Adam(5e-3, decay=decay_rate)) 
+
+print("Initialize active learner...")
+regressor = ActiveLearner(
+    estimator=model_ae,
+    query_strategy=uncertainty_sampling,
+    X_training=train_x_al, y_training=train_y_al
+)
+
+n_queries = 100
+print(f"active learning for {n_queries} epochs")
+for idx in range(n_queries):
+    if idx % 50 == 0:
+        print(idx)
+        # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+    query_idx, query_instance = regressor.query(pool_x_al)
+    regressor.teach(pool_x_al[query_idx], pool_y_al[query_idx])
+
+#print("training cnn model on ae...")
+# lr = 5e-3
+# epochs = 50
+# decay_rate = lr / 50
+# model_ae = cnn_model1(x_train_ae_cnn.shape[1:], opt=Adam(5e-3, decay=decay_rate))
+# earlystopper = EarlyStopping(patience=50, verbose=1)
+# #cp = ModelCheckpoint('v1_no_pca.h5', verbose=1, save_best_only=True)
+# hist_ae = model_ae.fit(x_train_ae_cnn, y_train_ae_cnn, epochs=50, validation_data=(x_test_ae_cnn, y_test_ae_cnn),
+#                  callbacks=[earlystopper], batch_size=4, verbose=1)
 
 print("saving model...")
-model_ae.save("/tmp/c693s270/model_ae.h5")
+model_ae.save("/tmp/c693s270/model_ae_active_learning.h5")
 print("making predictions & saving results...")
 preds = model_ae.predict(x_test_ae_cnn)
 result = pd.DataFrame(preds, columns=["x", "y", "z"])
 print(f"{len(result)} rows")
-result.to_csv("/tmp/cnn_ae_preds.csv")
+result.to_csv("/tmp/c693s270/cnn_ae_al_preds.csv")
 print("All done!!")
 # print("saving model...")
 # model0.save('model3.h5')
