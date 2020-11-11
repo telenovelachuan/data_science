@@ -231,7 +231,7 @@ regressor = ActiveLearner(
     X_training=train_x_al, y_training=train_y_al
 )
 
-n_queries = 100
+n_queries = 300
 print(f"active learning for {n_queries} epochs")
 for idx in range(n_queries):
     if idx % 50 == 0:
@@ -256,7 +256,7 @@ print("making predictions & saving results...")
 preds = model_ae.predict(x_test_ae_cnn)
 result = pd.DataFrame(preds, columns=["x", "y", "z"])
 print(f"{len(result)} rows")
-result.to_csv("/tmp/c693s270/cnn_ae_al_preds.csv")
+result.to_csv("/tmp/c693s270/cnn_ae_al_300_preds.csv")
 print("All done!!")
 # print("saving model...")
 # model0.save('model3.h5')
