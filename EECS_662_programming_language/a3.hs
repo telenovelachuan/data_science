@@ -90,7 +90,8 @@ elabFBAE (BindD i a s) = App (Lambda i (elabFBAE s)) (elabFBAE a)
 
 
 evalFBAE :: Env' -> FBAE -> (Maybe FAEValue)
-evalFBAE _ _ = Nothing
+evalFBAE e s = evalStatFAE e (elabFBAE s)
+
 
 -- FBAEC AST and Type Definitions
 
@@ -141,6 +142,14 @@ elabFBAE_t4 = elabFBAE (LambdaD "x" (PlusD (IdD "x") (NumD 1)))
 elabFBAE_t5 = elabFBAE (AppD (LambdaD "x" (PlusD (IdD "x") (NumD 1))) (NumD 6))
 elabFBAE_t6 = elabFBAE (IdD "x")
 
+--evalFBAE test cases
+evalFBAE_t1 = evalFBAE [] (NumD 5)
+evalFBAE_t2 = evalFBAE [] (PlusD (NumD 5) (NumD 7))
+evalFBAE_t3 = evalFBAE [] (MinusD (NumD 5) (NumD 3))
+evalFBAE_t4 = evalFBAE [] (LambdaD "x" (PlusD (IdD "x") (NumD 1)))
+evalFBAE_t5 = evalFBAE [] (AppD (LambdaD "x" (PlusD (IdD "x") (NumD 1))) (NumD 6))
+evalFBAE_t6 = evalFBAE [] (IdD "x")
+
 
 run_test_cases = do
       putStrLn "Running test cases..."
@@ -167,6 +176,14 @@ run_test_cases = do
       print ("elabFBAE elabFBAE (LambdaD 'x' (PlusD (IdD 'x') (NumD 1))): ", elabFBAE_t4)
       print ("elabFBAE (AppD (LambdaD 'x' (PlusD (IdD 'x') (NumD 1))) (NumD 6)): ", elabFBAE_t5)
       print ("elabFBAE (IdD 'x'): ", elabFBAE_t6)
+
+      print "evalFBAE test cases"
+      print ("evalFBAE [] (NumD 5): ", evalFBAE_t1)
+      print ("evalFBAE [] (PlusD (NumD 5) (NumD 7)): ", evalFBAE_t2)
+      print ("evalFBAE [] (MinusD (NumD 5) (NumD 3)): ", evalFBAE_t3)
+      print ("evalFBAE [] elabFBAE (LambdaD 'x' (PlusD (IdD 'x') (NumD 1))): ", evalFBAE_t4)
+      print ("evalFBAE [] (AppD (LambdaD 'x' (PlusD (IdD 'x') (NumD 1))) (NumD 6)): ", evalFBAE_t5)
+      print ("evalFBAE [] (IdD 'x'): ", evalFBAE_t6)
 
 
 main = do run_test_cases
