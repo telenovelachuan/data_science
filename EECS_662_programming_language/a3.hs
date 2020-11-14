@@ -36,7 +36,7 @@ evalDynFAE e (App f a) = do {
   (Lambda i s) <- evalDynFAE e f;
   (evalDynFAE ((i,a'):e) s);
 }
---evalDynFAE _ _ = Nothing
+
 
 data FAEValue where
   NumV :: Int -> FAEValue
@@ -46,7 +46,25 @@ data FAEValue where
 type Env' = [(String,FAEValue)]
 
 evalStatFAE :: Env' -> FAE -> (Maybe FAEValue)
-evalStatFAE _ _ = Nothing
+evalStatFAE e (Num n) = Just (NumV n)
+evalStatFAE e (Id s) = lookup s e
+--evalStatFAE e (ClosureV )
+evalStatFAE e (Plus a b) = do {
+  (NumV a') <- evalStatFAE e a;
+  (NumV b') <- evalStatFAE e b;
+  return (NumV (a' + b'))
+}
+evalStatFAE e (Minus a b) = do {
+  (NumV a') <- evalStatFAE e a;
+  (NumV b') <- evalStatFAE e b;
+  if a' >= b' then return (NumV (a' - b')) else Nothing
+}
+evalStatFAE e (Lambda i s) = return (ClosureV i s e)
+evalStatFAE e (App f a) = do {
+  a' <- evalStatFAE e a;
+  (ClosureV i s e) <- evalStatFAE e f;
+  (evalStatFAE ((i, a'):e) s);
+}
 
 
 -- FBAE AST and Type Definitions
@@ -98,6 +116,15 @@ evalDynFAE_t2 = evalDynFAE [] (Plus (Num 5) (Num 7))
 evalDynFAE_t3 = evalDynFAE [] (Minus (Num 5) (Num 3))
 evalDynFAE_t4 = evalDynFAE [] (Lambda "x" (Plus (Id "x") (Num 1)))
 evalDynFAE_t5 = evalDynFAE [] (App (Lambda "x" (Plus (Id "x") (Num 1))) (Num 6))
+evalDynFAE_t6 = evalDynFAE [("x", (Num 2))] (Id "x")
+
+--evalStatFAE test cases
+evalStatFAE_t1 = evalStatFAE [] (Num 5)
+evalStatFAE_t2 = evalStatFAE [] (Plus (Num 5) (Num 7))
+evalStatFAE_t3 = evalStatFAE [] (Minus (Num 5) (Num 3))
+evalStatFAE_t4 = evalStatFAE [] (Lambda "x" (Plus (Id "x") (Num 1)))
+evalStatFAE_t5 = evalStatFAE [] (App (Lambda "x" (Plus (Id "x") (Num 1))) (Num 6))
+evalStatFAE_t6 = evalStatFAE [("x", (NumV 2))] (Id "x")
 
 
 run_test_cases = do
@@ -108,6 +135,15 @@ run_test_cases = do
       print ("evalDynFAE [] (Minus (Num 5) (Num 3)): ", evalDynFAE_t3)
       print ("evalDynFAE [] (Lambda 'x' ('x' + 1)): ", evalDynFAE_t4)
       print ("evalDynFAE [] (App Lambda 'x' (Plus (Id 'x') (Num 1)) (Num 6)): ", evalDynFAE_t5)
+      print ("evalDynFAE [('x', 2)] (Id 'x'): ", evalDynFAE_t6)
+
+      print "evalStatFAE test cases"
+      print ("evalStatFAE [] (Num 5): ", evalStatFAE_t1)
+      print ("evalStatFAE [] (Plus (Num 5) (Num 7)): ", evalStatFAE_t2)
+      print ("evalStatFAE [] (Minus (Num 5) (Num 3)): ", evalStatFAE_t3)
+      print ("evalStatFAE [] (Lambda 'x' ('x' + 1)): ", evalStatFAE_t4)
+      print ("evalStatFAE [] (App Lambda 'x' (Plus (Id 'x') (Num 1)) (Num 6)): ", evalStatFAE_t5)
+      print ("evalStatFAE [('x', 2)] (Id 'x'): ", evalStatFAE_t6)
 
 
 main = do run_test_cases
