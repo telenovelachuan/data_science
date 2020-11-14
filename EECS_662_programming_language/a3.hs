@@ -80,7 +80,14 @@ data FBAE where
   deriving (Show,Eq)
 
 elabFBAE :: FBAE -> FAE
-elabFBAE _ = (Num (-1))
+elabFBAE (NumD n) = Num n
+elabFBAE (IdD x) = Id x
+elabFBAE (PlusD a b) = Plus (elabFBAE a) (elabFBAE b)
+elabFBAE (MinusD a b) = Minus (elabFBAE a) (elabFBAE b)
+elabFBAE (LambdaD i s) = Lambda i (elabFBAE s)
+elabFBAE (AppD f a) = App (elabFBAE f) (elabFBAE a)
+elabFBAE (BindD i a s) = App (Lambda i (elabFBAE s)) (elabFBAE a)
+
 
 evalFBAE :: Env' -> FBAE -> (Maybe FAEValue)
 evalFBAE _ _ = Nothing
@@ -126,6 +133,14 @@ evalStatFAE_t4 = evalStatFAE [] (Lambda "x" (Plus (Id "x") (Num 1)))
 evalStatFAE_t5 = evalStatFAE [] (App (Lambda "x" (Plus (Id "x") (Num 1))) (Num 6))
 evalStatFAE_t6 = evalStatFAE [("x", (NumV 2))] (Id "x")
 
+--elabFBAE test cases
+elabFBAE_t1 = elabFBAE (NumD 5)
+elabFBAE_t2 = elabFBAE (PlusD (NumD 5) (NumD 7))
+elabFBAE_t3 = elabFBAE (MinusD (NumD 5) (NumD 3))
+elabFBAE_t4 = elabFBAE (LambdaD "x" (PlusD (IdD "x") (NumD 1)))
+elabFBAE_t5 = elabFBAE (AppD (LambdaD "x" (PlusD (IdD "x") (NumD 1))) (NumD 6))
+elabFBAE_t6 = elabFBAE (IdD "x")
+
 
 run_test_cases = do
       putStrLn "Running test cases..."
@@ -133,7 +148,7 @@ run_test_cases = do
       print ("evalDynFAE [] (Num 5): ", evalDynFAE_t1)
       print ("evalDynFAE [] (Plus (Num 5) (Num 7)): ", evalDynFAE_t2)
       print ("evalDynFAE [] (Minus (Num 5) (Num 3)): ", evalDynFAE_t3)
-      print ("evalDynFAE [] (Lambda 'x' ('x' + 1)): ", evalDynFAE_t4)
+      print ("evalDynFAE [] (Lambda 'x' (Plus (Id 'x') (Num 1))): ", evalDynFAE_t4)
       print ("evalDynFAE [] (App Lambda 'x' (Plus (Id 'x') (Num 1)) (Num 6)): ", evalDynFAE_t5)
       print ("evalDynFAE [('x', 2)] (Id 'x'): ", evalDynFAE_t6)
 
@@ -141,9 +156,17 @@ run_test_cases = do
       print ("evalStatFAE [] (Num 5): ", evalStatFAE_t1)
       print ("evalStatFAE [] (Plus (Num 5) (Num 7)): ", evalStatFAE_t2)
       print ("evalStatFAE [] (Minus (Num 5) (Num 3)): ", evalStatFAE_t3)
-      print ("evalStatFAE [] (Lambda 'x' ('x' + 1)): ", evalStatFAE_t4)
+      print ("evalStatFAE [] (Lambda 'x' (Plus (Id 'x') (Num 1))): ", evalStatFAE_t4)
       print ("evalStatFAE [] (App Lambda 'x' (Plus (Id 'x') (Num 1)) (Num 6)): ", evalStatFAE_t5)
       print ("evalStatFAE [('x', 2)] (Id 'x'): ", evalStatFAE_t6)
+
+      print "elabFBAE test cases"
+      print ("elabFBAE (NumD 5): ", elabFBAE_t1)
+      print ("elabFBAE (PlusD (NumD 5) (NumD 7)): ", elabFBAE_t2)
+      print ("elabFBAE (MinusD (NumD 5) (NumD 3)): ", elabFBAE_t3)
+      print ("elabFBAE elabFBAE (LambdaD 'x' (PlusD (IdD 'x') (NumD 1))): ", elabFBAE_t4)
+      print ("elabFBAE (AppD (LambdaD 'x' (PlusD (IdD 'x') (NumD 1))) (NumD 6)): ", elabFBAE_t5)
+      print ("elabFBAE (IdD 'x'): ", elabFBAE_t6)
 
 
 main = do run_test_cases
