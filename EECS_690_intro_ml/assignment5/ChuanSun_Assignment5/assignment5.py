@@ -58,7 +58,7 @@ def evaluate_model(model_func, model_name, x_train=X_train, x_test=X_test,
 # In[75]:
 
 
-print("Part1.")
+print("Part1: Imbalanced Data Set")
 evaluate_model(lambda : MLPClassifier(), "Neural Network")
 
 
@@ -105,7 +105,7 @@ print(f"Scikit-learn balanced_accuracy_score: {balanced_accuracy_score(y_true, y
 # In[62]:
 
 
-print("Part2.")
+print("\nPart2: Oversampling")
 from imblearn.over_sampling import RandomOverSampler
 ros = RandomOverSampler(random_state=0)
 x_resampled, y_resampled = ros.fit_resample(df_x, df_y)
@@ -144,7 +144,7 @@ except Exception as ex:
 # In[68]:
 
 
-print("Part3.")
+print("\nPart3: Undersampling")
 print("Random undersampling")
 from imblearn.under_sampling import RandomUnderSampler
 rus = RandomUnderSampler(random_state=42)
