@@ -112,10 +112,22 @@ data FBAEC where
   deriving (Show,Eq)
 
 elabFBAEC :: FBAEC -> FAE
-elabFBAEC _ = (Num (-1))
+elabFBAEC (NumE n) = Num n
+elabFBAEC (IdE x) = Id x
+elabFBAEC (PlusE a b) = Plus (elabFBAEC a) (elabFBAEC b)
+elabFBAEC (MinusE a b) = Minus (elabFBAEC a) (elabFBAEC b)
+elabFBAEC (LambdaE i s) = Lambda i (elabFBAEC s)
+elabFBAEC (AppE f a) = App (elabFBAEC f) (elabFBAEC a)
+elabFBAEC (BindE i a s) = App (Lambda i (elabFBAEC s)) (elabFBAEC a)
+elabFBAEC (TrueE ) = Lambda "t" (Lambda "f" (Id "t"))
+elabFBAEC (FalseE ) = Lambda "t" (Lambda "f" (Id "f"))
+elabFBAEC (AndE x y) = App (App (Lambda "m" (Lambda "n" (App (App (Id "m") (Id "n")) (elabFBAEC FalseE)))) (elabFBAEC x)) (elabFBAEC y)
+elabFBAEC (OrE x y) = App (App (Lambda "m" (Lambda "n" (App (App (Id "m") (elabFBAEC TrueE)) (Id "n")))) (elabFBAEC x)) (elabFBAEC y)
+elabFBAEC (NotE x) = Lambda "m" (Lambda "n" (App (App (elabFBAEC x) (Id "n")) (Id "m")))
+elabFBAEC (IfE x y z) = App (App (App (Lambda "x" (Lambda "true" ( Lambda "false" (App (App (Id "x") (Id "true")) ( Id "false" ))))) (elabFBAEC x)) (elabFBAEC y)) (elabFBAEC z)
 
 evalFBAEC :: Env' -> FBAEC -> Maybe FAEValue
-evalFBAEC _ _ = Nothing
+evalFBAEC e a = evalStatFAE e ( elabFBAEC a )
 
 
 --evalDynFAE test cases
@@ -149,6 +161,35 @@ evalFBAE_t3 = evalFBAE [] (MinusD (NumD 5) (NumD 3))
 evalFBAE_t4 = evalFBAE [] (LambdaD "x" (PlusD (IdD "x") (NumD 1)))
 evalFBAE_t5 = evalFBAE [] (AppD (LambdaD "x" (PlusD (IdD "x") (NumD 1))) (NumD 6))
 evalFBAE_t6 = evalFBAE [] (IdD "x")
+
+--elabFBAEC test cases
+elabFBAEC_t1 = elabFBAEC (TrueE)
+elabFBAEC_t2 = elabFBAEC (FalseE)
+elabFBAEC_t3 = elabFBAEC (AndE TrueE TrueE)
+elabFBAEC_t4 = elabFBAEC (AndE TrueE FalseE)
+elabFBAEC_t5 = elabFBAEC (AndE FalseE FalseE)
+elabFBAEC_t6 = elabFBAEC (OrE TrueE TrueE)
+elabFBAEC_t7 = elabFBAEC (OrE TrueE FalseE)
+elabFBAEC_t8 = elabFBAEC (OrE FalseE FalseE)
+elabFBAEC_t9 = elabFBAEC (NotE TrueE)
+elabFBAEC_t10 = elabFBAEC (NotE FalseE)
+elabFBAEC_t11 = elabFBAEC (IfE FalseE (NumE 5) (NumE 12))
+elabFBAEC_t12 = elabFBAEC (IfE TrueE (NumE 5) (NumE 12))
+
+--evalFBAEC test cases
+evalFBAEC_t1 = evalFBAEC [] (TrueE)
+evalFBAEC_t2 = evalFBAEC [] (FalseE)
+evalFBAEC_t3 = evalFBAEC [] (AndE TrueE TrueE)
+evalFBAEC_t4 = evalFBAEC [] (AndE TrueE FalseE)
+evalFBAEC_t5 = evalFBAEC [] (AndE FalseE FalseE)
+evalFBAEC_t6 = evalFBAEC [] (OrE TrueE TrueE)
+evalFBAEC_t7 = evalFBAEC [] (OrE TrueE FalseE)
+evalFBAEC_t8 = evalFBAEC [] (OrE FalseE FalseE)
+evalFBAEC_t9 = evalFBAEC [] (NotE TrueE)
+evalFBAEC_t10 = evalFBAEC [] (NotE FalseE)
+evalFBAEC_t11 = evalFBAEC [] (IfE FalseE (NumE 5) (NumE 12))
+evalFBAEC_t12 = evalFBAEC [] (IfE TrueE (NumE 5) (NumE 12))
+
 
 
 run_test_cases = do
@@ -184,6 +225,35 @@ run_test_cases = do
       print ("evalFBAE [] elabFBAE (LambdaD 'x' (PlusD (IdD 'x') (NumD 1))): ", evalFBAE_t4)
       print ("evalFBAE [] (AppD (LambdaD 'x' (PlusD (IdD 'x') (NumD 1))) (NumD 6)): ", evalFBAE_t5)
       print ("evalFBAE [] (IdD 'x'): ", evalFBAE_t6)
+
+      print "elabFBAEC test cases"
+      print ("elabFBAEC (TrueE): ", elabFBAEC_t1)
+      print ("elabFBAEC (FalseE): ", elabFBAEC_t2)
+      print ("elabFBAEC (AndE TrueE TrueE): ", elabFBAEC_t3)
+      print ("elabFBAEC (AndE TrueE FalseE): ", elabFBAEC_t4)
+      print ("elabFBAEC (AndE FalseE FalseE): ", elabFBAEC_t5)
+      print ("elabFBAEC (OrE TrueE TrueE): ", elabFBAEC_t6)
+      print ("elabFBAEC (OrE TrueE FalseE): ", elabFBAEC_t7)
+      print ("elabFBAEC (OrE FalseE FalseE): ", elabFBAEC_t8)
+      print ("elabFBAEC (NotE TrueE): ", elabFBAEC_t9)
+      print ("elabFBAEC (NotE FalseE): ", elabFBAEC_t10)
+      print ("elabFBAEC (IfE FalseE (NumE 5) (NumE 12)): ", elabFBAEC_t11)
+      print ("elabFBAEC (IfE TrueE (NumE 5) (NumE 12)): ", elabFBAEC_t12)
+
+
+      print "evalFBAEC test cases"
+      print ("evalFBAEC [] (TrueE): ", evalFBAEC_t1)
+      print ("evalFBAEC [] (FalseE): ", evalFBAEC_t2)
+      print ("evalFBAEC [] (AndE TrueE TrueE): ", evalFBAEC_t3)
+      print ("evalFBAEC [] (AndE TrueE FalseE): ", evalFBAEC_t4)
+      print ("evalFBAEC [] (AndE FalseE FalseE) ", evalFBAEC_t5)
+      print ("evalFBAEC [] (OrE TrueE TrueE): ", evalFBAEC_t6)
+      print ("evalFBAEC [] (OrE TrueE FalseE): ", evalFBAEC_t7)
+      print ("evalFBAEC [] (OrE FalseE FalseE) ", evalFBAEC_t8)
+      print ("evalFBAEC [] (NotE TrueE) ", evalFBAEC_t9)
+      print ("evalFBAEC [] (NotE FalseE) ", evalFBAEC_t10)
+      print ("evalFBAEC [] (IfE FalseE (NumE 5) (NumE 12)) ", evalFBAEC_t11)
+      print ("evalFBAEC [] (IfE TrueE (NumE 5) (NumE 12)) ", evalFBAEC_t12)
 
 
 main = do run_test_cases
