@@ -227,7 +227,7 @@ model_ae = cnn_model1(train_x_al.shape[1:], opt=Adam(5e-3, decay=decay_rate))
 print("Initialize active learner...")
 regressor = ActiveLearner(
     estimator=model_ae,
-    query_strategy=uncertainty_sampling,
+    query_strategy=margin_sampling,
     X_training=train_x_al, y_training=train_y_al
 )
 
@@ -251,12 +251,12 @@ for idx in range(n_queries):
 #                  callbacks=[earlystopper], batch_size=4, verbose=1)
 
 print("saving model...")
-model_ae.save("/tmp/c693s270/model_ae_active_learning.h5")
+model_ae.save("/tmp/c693s270/model_ae_al_margin.h5")
 print("making predictions & saving results...")
 preds = model_ae.predict(x_test_ae_cnn)
 result = pd.DataFrame(preds, columns=["x", "y", "z"])
 print(f"{len(result)} rows")
-result.to_csv("/tmp/c693s270/cnn_ae_al_300_preds.csv")
+result.to_csv("/tmp/c693s270/cnn_ae_al_margin_300_preds.csv")
 print("All done!!")
 # print("saving model...")
 # model0.save('model3.h5')
