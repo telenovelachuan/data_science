@@ -1,0 +1,7 @@
+Part 1
+Question 1: In my elbow_k(6) kmeans results, 3 species are included. Cluster1, and 5 represents setosa, cluster2, and 4 represents versicolor. While cluster cluster0, and 3 represents virginica.
+
+Part 2
+Question 2a: In the AIC results, 3 species of iris are represented. Cluster0, and 5 represents setosa, cluster3, 4 and 6 represents versicolor. While cluster cluster1, 2, and 7 represents virginica.
+
+Question 2b: In the BIC results, 3 species of iris are represented Cluster 1 represents setosa,  cluster 0 and 3 represents versicolor, while cluster cluster 2 represents virginica.
