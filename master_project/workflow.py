@@ -234,7 +234,7 @@ def get_prediction_precision(regressor, x_test, y_test):
 def random_sampling(classifier, X_pool):
     n_samples = len(X_pool)
     query_idx = np.random.choice(range(n_samples))
-    return query_idx, X_pool[query_idx]
+    return [query_idx], X_pool[query_idx]
 
 
 #n_queries = 100
@@ -246,7 +246,6 @@ for n_queries in queries_num:
     regressor = ActiveLearner(
         estimator=model_ae,
         query_strategy=random_sampling,
-        #query_strategy=uncertainty_sampling,
         X_training=train_x_al, y_training=train_y_al
     )
     print(f"active learning for {n_queries} epochs")
@@ -255,9 +254,7 @@ for n_queries in queries_num:
             print(idx)
             # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
         query_idx, query_instance = regressor.query(pool_x_al)
-        query_idx = [query_idx]
-        print(f"queries idx by uncertainty sampling: {query_idx}, teaching...")
-        print(f"pool_x_al[query_idx].shape:{pool_x_al[query_idx].shape}")
+        #query_idx = [query_idx]
         #chosen_samples.append(pool_y_al[query_idx])
         regressor.teach(pool_x_al[query_idx], pool_y_al[query_idx])
     print(f"Evaluating model at {n_queries} queries")
