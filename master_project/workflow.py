@@ -237,31 +237,30 @@ def random_sampling(classifier, X_pool):
     return [query_idx], X_pool[query_idx]
 
 
-#n_queries = 100
-queries_num = np.linspace(50, 350, 7)
+n_queries = 100
+#queries_num = np.linspace(50, 350, 7)
 mse_dict = {}
-for n_queries in queries_num:
-    #chosen_samples =[]
-    print("Initialize active learner...")
-    regressor = ActiveLearner(
+#for n_queries in queries_num:
+chosen_samples =[]
+print("Initialize active learner...")
+regressor = ActiveLearner(
         estimator=model_ae,
         query_strategy=random_sampling,
         X_training=train_x_al, y_training=train_y_al
-    )
-    print(f"active learning for {n_queries} epochs")
-    for idx in range(int(n_queries)):
-        if idx % 50 == 0:
-            print(idx)
-            # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
-        query_idx, query_instance = regressor.query(pool_x_al)
-        #query_idx = [query_idx]
-        #chosen_samples.append(pool_y_al[query_idx])
-        regressor.teach(pool_x_al[query_idx], pool_y_al[query_idx])
-    print(f"Evaluating model at {n_queries} queries")
-    get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
-    y_pred = regressor.predict(x_test_ae_cnn)
-    mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
-    mse_dict[n_queries] = mse
+)
+    #print(f"active learning for {n_queries} epochs")
+for idx in range(int(n_queries)):
+    if idx % 50 == 0:
+        print(idx)
+        # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+    query_idx, query_instance = regressor.query(pool_x_al)
+    chosen_samples.append(pool_y_al[query_idx])
+    regressor.teach(pool_x_al[query_idx], pool_y_al[query_idx])
+print(f"Evaluating model at {n_queries} queries")
+get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+y_pred = regressor.predict(x_test_ae_cnn)
+#mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
+#mse_dict[n_queries] = mse
 
 #print("training cnn model on ae...")
 # lr = 5e-3
@@ -281,10 +280,10 @@ result = pd.DataFrame(preds, columns=["x", "y", "z"])
 print(f"{len(result)} rows")
 #result.to_csv("/tmp/c693s270/cnn_ae_al_uncertainty_100_preds.csv")
 print("saving chosen samples")
-#df_chosen = pd.DataFrame(np.array(chosen_samples).reshape(-1, 3), columns=["x", "y", "z"])
-#df_chosen.to_csv("/tmp/c693s270/cnn_ae_al_uncertainty_100_chosen.csv")
+df_chosen = pd.DataFrame(np.array(chosen_samples).reshape(-1, 3), columns=["x", "y", "z"])
+df_chosen.to_csv("/tmp/c693s270/cnn_ae_al_random_100_chosen.csv")
 print("All done!!")
-print(f"mse_dict: {mse_dict}")
+#print(f"mse_dict: {mse_dict}")
 # print("saving model...")
 # model0.save('model3.h5')
 # print("All done!")
