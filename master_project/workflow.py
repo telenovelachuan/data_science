@@ -15,6 +15,7 @@ import plotly
 from plotly.offline import download_plotlyjs, init_notebook_mode, iplot
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
 
 from tensorflow.keras.models import Model, Sequential, load_model
 from tensorflow.keras.layers import Input, Activation, AveragePooling2D, Conv2DTranspose, ZeroPadding2D
@@ -216,7 +217,7 @@ x_train_ae, x_test_ae, y_train_ae, y_test_ae = train_test_split(h2_ae, Pos, test
 x_train_ae_cnn, x_test_ae_cnn, y_train_ae_cnn, y_test_ae_cnn = train_test_split(h2_ae_1dcnn, Pos, test_size=0.1, random_state=42)
 
 print("splitting training data and active learning pool...")
-train_x_al, pool_x_al, train_y_al, pool_y_al = train_test_split(x_train_ae_cnn, y_train_ae_cnn, test_size=0.5, random_state=42)
+train_x_al, pool_x_al, train_y_al, pool_y_al = train_test_split(x_train_ae_cnn, y_train_ae_cnn, test_size=0.8, random_state=42)
 
 print("constructing 1D-CNN model...")
 lr = 5e-3
@@ -224,21 +225,46 @@ epochs = 50
 decay_rate = lr / 50
 model_ae = cnn_model1(train_x_al.shape[1:], opt=Adam(5e-3, decay=decay_rate)) 
 
-print("Initialize active learner...")
-regressor = ActiveLearner(
-    estimator=model_ae,
-    query_strategy=margin_sampling,
-    X_training=train_x_al, y_training=train_y_al
-)
 
-n_queries = 300
-print(f"active learning for {n_queries} epochs")
-for idx in range(n_queries):
-    if idx % 50 == 0:
-        print(idx)
-        # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
-    query_idx, query_instance = regressor.query(pool_x_al)
-    regressor.teach(pool_x_al[query_idx], pool_y_al[query_idx])
+def get_prediction_precision(regressor, x_test, y_test):
+    y_pred = regressor.predict(x_test)
+    mse = mean_squared_error(y_true=y_test, y_pred=y_pred)
+    print(f"current MSE: {mse}")
+
+def random_sampling(classifier, X_pool):
+    n_samples = len(X_pool)
+    query_idx = np.random.choice(range(n_samples))
+    return query_idx, X_pool[query_idx]
+
+
+#n_queries = 100
+queries_num = np.linspace(50, 350, 7)
+mse_dict = {}
+for n_queries in queries_num:
+    #chosen_samples =[]
+    print("Initialize active learner...")
+    regressor = ActiveLearner(
+        estimator=model_ae,
+        query_strategy=random_sampling,
+        #query_strategy=uncertainty_sampling,
+        X_training=train_x_al, y_training=train_y_al
+    )
+    print(f"active learning for {n_queries} epochs")
+    for idx in range(int(n_queries)):
+        if idx % 50 == 0:
+            print(idx)
+            # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+        query_idx, query_instance = regressor.query(pool_x_al)
+        query_idx = [query_idx]
+        print(f"queries idx by uncertainty sampling: {query_idx}, teaching...")
+        print(f"pool_x_al[query_idx].shape:{pool_x_al[query_idx].shape}")
+        #chosen_samples.append(pool_y_al[query_idx])
+        regressor.teach(pool_x_al[query_idx], pool_y_al[query_idx])
+    print(f"Evaluating model at {n_queries} queries")
+    get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+    y_pred = regressor.predict(x_test_ae_cnn)
+    mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
+    mse_dict[n_queries] = mse
 
 #print("training cnn model on ae...")
 # lr = 5e-3
@@ -251,13 +277,17 @@ for idx in range(n_queries):
 #                  callbacks=[earlystopper], batch_size=4, verbose=1)
 
 print("saving model...")
-model_ae.save("/tmp/c693s270/model_ae_al_margin.h5")
+#model_ae.save("/tmp/c693s270/model_ae_al_uncertainty_100.h5")
 print("making predictions & saving results...")
 preds = model_ae.predict(x_test_ae_cnn)
 result = pd.DataFrame(preds, columns=["x", "y", "z"])
 print(f"{len(result)} rows")
-result.to_csv("/tmp/c693s270/cnn_ae_al_margin_300_preds.csv")
+#result.to_csv("/tmp/c693s270/cnn_ae_al_uncertainty_100_preds.csv")
+print("saving chosen samples")
+#df_chosen = pd.DataFrame(np.array(chosen_samples).reshape(-1, 3), columns=["x", "y", "z"])
+#df_chosen.to_csv("/tmp/c693s270/cnn_ae_al_uncertainty_100_chosen.csv")
 print("All done!!")
+print(f"mse_dict: {mse_dict}")
 # print("saving model...")
 # model0.save('model3.h5')
 # print("All done!")
