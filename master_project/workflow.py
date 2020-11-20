@@ -26,7 +26,7 @@ from modAL.models import ActiveLearner
 from modAL.uncertainty import entropy_sampling, margin_sampling, uncertainty_sampling
 
 
-CTW_labelled = "/users/c693s270/"
+CTW_labelled = "/home/c693s270/"
 def get_data(data_file):
     
     f = h5py.File(data_file, 'r')
@@ -38,51 +38,58 @@ def get_data(data_file):
             
     return H_Re, H_Im, SNR, Pos        
 
-# load data from file_1.hdf4
+# # load data from file_1.hdf4
 
-data_file = CTW_labelled + "file_" + str(1) + ".hdf5"
-H_Re, H_Im, SNR, Pos = get_data(data_file)
-print("H_Re is of shape {}".format(H_Re.shape))
-print("H_Im is of shape {}".format(H_Im.shape))
-print("SNR is of shape {}".format(SNR.shape))
-print("Pos is of shape {}".format(Pos.shape))
+# data_file = CTW_labelled + "file_" + str(1) + ".hdf5"
+# H_Re, H_Im, SNR, Pos = get_data(data_file)
+# print("H_Re is of shape {}".format(H_Re.shape))
+# print("H_Im is of shape {}".format(H_Im.shape))
+# print("SNR is of shape {}".format(SNR.shape))
+# print("Pos is of shape {}".format(Pos.shape))
 
-# Euclidean norm
-H = np.sqrt(H_Re[:,:]**2 + H_Im[:,:]**2)
+# # Euclidean norm
+# H = np.sqrt(H_Re[:,:]**2 + H_Im[:,:]**2)
 
-# Extracting phase
-print("extracting phase...")
-arctan = np.divide(H_Re[:,:], H_Im[:,:])
-arctan[np.isnan(arctan)] = math.pi / 2
-#arctan.shape
+# # Extracting phase
+# print("extracting phase...")
+# arctan = np.divide(H_Re[:,:], H_Im[:,:])
+# arctan[np.isnan(arctan)] = math.pi / 2
+# #arctan.shape
 
-# append phase onto H
-print("appending phase...")
-h1 = np.empty([512, 56, 924, 10])
-for d1 in range(512):
-    for d2 in range(56):
-        for d3 in range(924):
-            h = H[d1][d2][d3]
-            phase = arctan[d1][d2][d3]
-            h1[d1][d2][d3] = np.vstack((h, phase)).reshape(-1)
+# # append phase onto H
+# print("appending phase...")
+# h1 = np.empty([512, 56, 924, 10])
+# for d1 in range(512):
+#     for d2 in range(56):
+#         for d3 in range(924):
+#             h = H[d1][d2][d3]
+#             phase = arctan[d1][d2][d3]
+#             h1[d1][d2][d3] = np.vstack((h, phase)).reshape(-1)
         
-#h1.shape
+# #h1.shape
 
-# append SNR onto h1
-print("appending SNR...")
-snr_rep = np.repeat(SNR, 2, axis=1).reshape(512, 56, -1)
-h2 = np.empty([512, 56, 925, 10])
-for d1 in range(512):
-    for d2 in range(56):
-        h = h1[d1][d2]
-        snr = snr_rep[d1][d2]
-        h2[d1][d2] = np.vstack((h, snr))
+# # append SNR onto h1
+# print("appending SNR...")
+# snr_rep = np.repeat(SNR, 2, axis=1).reshape(512, 56, -1)
+# h2 = np.empty([512, 56, 925, 10])
+# for d1 in range(512):
+#     for d2 in range(56):
+#         h = h1[d1][d2]
+#         snr = snr_rep[d1][d2]
+#         h2[d1][d2] = np.vstack((h, snr))
         
-#h2.shape
+# #h2.shape
 
-# replace inifinity values
-h2[h2 == inf] = 0
-h2[h2 == -inf] = 0
+# # replace inifinity values
+# h2[h2 == inf] = 0
+# h2[h2 == -inf] = 0
+
+# load data from pre-saved file
+print("Loading all training data...")
+with open('all.npy', 'rb') as f:
+    # 4979 * 56 * 925 * 10
+    h2 = np.load(f)
+    Pos = np.load(f)
 
 # # Execute PCA on h2
 # print("Execute PCA...")
@@ -238,29 +245,29 @@ def random_sampling(classifier, X_pool):
 
 
 n_queries = 100
-#queries_num = np.linspace(50, 350, 7)
+queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
-#for n_queries in queries_num:
-chosen_samples =[]
-print("Initialize active learner...")
-regressor = ActiveLearner(
-        estimator=model_ae,
-        query_strategy=random_sampling,
-        X_training=train_x_al, y_training=train_y_al
-)
-    #print(f"active learning for {n_queries} epochs")
-for idx in range(int(n_queries)):
-    if idx % 50 == 0:
-        print(idx)
-        # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
-    query_idx, query_instance = regressor.query(pool_x_al)
-    chosen_samples.append(pool_y_al[query_idx])
-    regressor.teach(pool_x_al[query_idx], pool_y_al[query_idx])
-print(f"Evaluating model at {n_queries} queries")
-get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
-y_pred = regressor.predict(x_test_ae_cnn)
-#mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
-#mse_dict[n_queries] = mse
+for n_queries in queries_num:
+    chosen_samples =[]
+    print("Initialize active learner...")
+    regressor = ActiveLearner(
+            estimator=model_ae,
+            query_strategy=random_sampling,
+            X_training=train_x_al, y_training=train_y_al
+    )
+    print(f"active learning for {n_queries} epochs")
+    for idx in range(int(n_queries)):
+        if idx % 50 == 0:
+            print(idx)
+            # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+        query_idx, query_instance = regressor.query(pool_x_al)
+        chosen_samples.append(pool_y_al[query_idx])
+        regressor.teach(pool_x_al[query_idx], pool_y_al[query_idx])
+    print(f"Evaluating model at {n_queries} queries")
+    get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+    y_pred = regressor.predict(x_test_ae_cnn)
+    mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
+    mse_dict[n_queries] = mse
 
 #print("training cnn model on ae...")
 # lr = 5e-3
@@ -283,7 +290,7 @@ print("saving chosen samples")
 df_chosen = pd.DataFrame(np.array(chosen_samples).reshape(-1, 3), columns=["x", "y", "z"])
 df_chosen.to_csv("/tmp/c693s270/cnn_ae_al_random_100_chosen.csv")
 print("All done!!")
-#print(f"mse_dict: {mse_dict}")
+print(f"mse_dict: {mse_dict}")
 # print("saving model...")
 # model0.save('model3.h5')
 # print("All done!")

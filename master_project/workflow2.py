@@ -46,6 +46,8 @@ for i in range(9):
     print(f"handling file_{idx}.hdf5...")
     data_file = CTW_labelled + "file_" + str(idx) + ".hdf5"
     H_Re, H_Im, SNR, Pos = get_data(data_file)
+    n = H_Re.shape[0]
+    print(f"shape[0:{n}")
 
 
     # Euclidean norm
@@ -59,8 +61,8 @@ for i in range(9):
 
     # append phase onto H
     print("appending phase...")
-    h1 = np.empty([512, 56, 924, 10])
-    for d1 in range(512):
+    h1 = np.empty([n, 56, 924, 10])
+    for d1 in range(n):
         for d2 in range(56):
             for d3 in range(924):
                 h = H[d1][d2][d3]
@@ -71,9 +73,9 @@ for i in range(9):
 
     # append SNR onto h1
     print("appending SNR...")
-    snr_rep = np.repeat(SNR, 2, axis=1).reshape(512, 56, -1)
-    h2 = np.empty([512, 56, 925, 10])
-    for d1 in range(512):
+    snr_rep = np.repeat(SNR, 2, axis=1).reshape(n, 56, -1)
+    h2 = np.empty([n, 56, 925, 10])
+    for d1 in range(n):
         for d2 in range(56):
             h = h1[d1][d2]
             snr = snr_rep[d1][d2]
