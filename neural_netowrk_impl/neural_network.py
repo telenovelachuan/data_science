@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from sklearn.datasets import load_iris
 import sys
 import random
 import matplotlib.pyplot as plt
@@ -225,6 +226,7 @@ class MLP:
                 previous_layer = reversed_layers[idx + 1]
             original_delta = final_loss if idx == 0 else next_layer.deltas
             current_layer.update_weights(original_delta, self.lr, previous_layer)
+            print(f"weights of layer {idx} updated according to original delta: {original_delta}.")
             next_layer = current_layer
             #print("---------------------------------")
 
@@ -268,19 +270,25 @@ class MLP:
                     # FORWARD PROPAGATION
                     _current_input = x_single
                     #print("_current_input in fit:{}".format(_current_input))
+
                     current_output = self._compute_output(_current_input)
+                    print(f"Computing forward propagation: {_current_input}")
                     #print("calculated output:{}".format(current_output))
 
                     predictions.append(current_output)
+                    print(f"Current model output: {current_output}")
                     ys.append(y_single)
 
                 # COMPUTING LOSS
                 loss = np.array([self._compute_loss(np.array(predictions), np.array(ys))])
+                print(f"Loss computed: {loss}")
                 # loss = self._compute_loss(layer_output, [y[0]])
                 #print("predictions:{}, losses:{}".format(predictions, loss))
 
                 # BACK PROPAGATION
+                print("Beginning back propagation...")
                 self._update_weights(loss)
+                print("weights updated")
                 total_loss = self._compute_total_loss(x, y)
                 history['loss'].append(total_loss)
 
@@ -301,11 +309,16 @@ class MLP:
         print("{} units in total".format(n_weights_total))
 
 
+
 #input_array = np.array([[-0.01, -0.02, -0.03], [0.04, 0.05, 0.006]])
 #x, y = input_array, np.array([1, 0])
 
-x = pd.read_csv("~/Desktop/x.csv").values
-y = pd.read_csv("~/Desktop/y.csv").values
+# x = pd.read_csv("~/Desktop/x.csv").values
+# y = pd.read_csv("~/Desktop/y.csv").values
+x, y = load_iris(return_X_y=True)
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+x = scaler.fit_transform(x)
 
 test = MLP(2, 2, x, init='uniform', lr=0.01)
 print(test.summary())

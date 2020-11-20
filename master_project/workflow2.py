@@ -40,66 +40,68 @@ def get_data(data_file):
             
     return H_Re, H_Im, SNR, Pos        
 
-# load data from file_1 0 file_9.hdf4
-for i in range(9):
-    idx = i + 1
-    print(f"handling file_{idx}.hdf5...")
-    data_file = CTW_labelled + "file_" + str(idx) + ".hdf5"
-    H_Re, H_Im, SNR, Pos = get_data(data_file)
-    n = H_Re.shape[0]
-    print(f"shape[0:{n}")
+# # load data from file_1 0 file_9.hdf4
+# for i in range(9):
+#     idx = i + 1
+#     print(f"handling file_{idx}.hdf5...")
+#     data_file = CTW_labelled + "file_" + str(idx) + ".hdf5"
+#     H_Re, H_Im, SNR, Pos = get_data(data_file)
+#     n = H_Re.shape[0]
+#     print(f"shape[0:{n}")
 
 
-    # Euclidean norm
-    H = np.sqrt(H_Re[:,:]**2 + H_Im[:,:]**2)
+#     # Euclidean norm
+#     H = np.sqrt(H_Re[:,:]**2 + H_Im[:,:]**2)
 
-    # Extracting phase
-    print("extracting phase...")
-    arctan = np.divide(H_Re[:,:], H_Im[:,:])
-    arctan[np.isnan(arctan)] = math.pi / 2
-    #arctan.shape
+#     # Extracting phase
+#     print("extracting phase...")
+#     arctan = np.divide(H_Re[:,:], H_Im[:,:])
+#     arctan[np.isnan(arctan)] = math.pi / 2
+#     #arctan.shape
 
-    # append phase onto H
-    print("appending phase...")
-    h1 = np.empty([n, 56, 924, 10])
-    for d1 in range(n):
-        for d2 in range(56):
-            for d3 in range(924):
-                h = H[d1][d2][d3]
-                phase = arctan[d1][d2][d3]
-                h1[d1][d2][d3] = np.vstack((h, phase)).reshape(-1)
+#     # append phase onto H
+#     print("appending phase...")
+#     h1 = np.empty([n, 56, 924, 10])
+#     for d1 in range(n):
+#         for d2 in range(56):
+#             for d3 in range(924):
+#                 h = H[d1][d2][d3]
+#                 phase = arctan[d1][d2][d3]
+#                 h1[d1][d2][d3] = np.vstack((h, phase)).reshape(-1)
         
-    #h1.shape
+#     #h1.shape
 
-    # append SNR onto h1
-    print("appending SNR...")
-    snr_rep = np.repeat(SNR, 2, axis=1).reshape(n, 56, -1)
-    h2 = np.empty([n, 56, 925, 10])
-    for d1 in range(n):
-        for d2 in range(56):
-            h = h1[d1][d2]
-            snr = snr_rep[d1][d2]
-            h2[d1][d2] = np.vstack((h, snr))
+#     # append SNR onto h1
+#     print("appending SNR...")
+#     snr_rep = np.repeat(SNR, 2, axis=1).reshape(n, 56, -1)
+#     h2 = np.empty([n, 56, 925, 10])
+#     for d1 in range(n):
+#         for d2 in range(56):
+#             h = h1[d1][d2]
+#             snr = snr_rep[d1][d2]
+#             h2[d1][d2] = np.vstack((h, snr))
         
-    #h2.shape
+#     #h2.shape
 
-    # replace inifinity values
-    h2[h2 == inf] = 0
-    h2[h2 == -inf] = 0
+#     # replace inifinity values
+#     h2[h2 == inf] = 0
+#     h2[h2 == -inf] = 0
 
-    if result is None:
-        result = h2
-        all_pos = Pos
-    else:
-        result = np.vstack((result, h2))
-        all_pos = np.vstack((all_pos, Pos))
+#     if result is None:
+#         result = h2
+#         all_pos = Pos
+#     else:
+#         result = np.vstack((result, h2))
+#         all_pos = np.vstack((all_pos, Pos))
 
-print("All files tackled, saving to disk...")
-with open('all.npy', 'wb') as f:
-    np.save(f, result)
-    np.save(f, all_pos)
+print("loading all pre-saved files...")
+with open('all.npy', 'rb') as f:
+    h2 = np.load(f)
+    Pos = np.load(f)
 
-print("Done handling all hdf5 files!")
+print("All files loaded.")
+
+
 # # Execute PCA on h2
 # print("Execute PCA...")
 # condense_to = 55
@@ -177,41 +179,47 @@ print("Done handling all hdf5 files!")
 #     return model
 
 
-# def data_gen(data):
-#     for i in range(len(data)):
-#         yield (data[i: i+1],data[i: i+1])
+def data_gen(data):
+    for i in range(len(data)):
+        yield (data[i: i+1],data[i: i+1])
 
-# def autoencoder():
-#     model = Sequential()
-#     model.add(Conv2D(128, (5, 5),input_shape=h2.shape[1:], activation='relu', padding='same'))
-#     model.add(AveragePooling2D((1, 5)))
-#     model.add(Conv2D(32, (3, 3),activation='relu', padding='same'))
-#     model.add(AveragePooling2D((1, 5)))
-#     model.add(Conv2D(32,(3,3),activation='linear', padding='same'))
-#     model.add(Conv2DTranspose(32, (3,3), strides=(1, 1), padding='same', activation='relu'))
-#     model.add(Conv2DTranspose(128,(3,3), strides=(1, 5), padding='same', activation='relu'))
-#     #model.add(ZeroPadding2D(((0, 0), (2, 1))))
-#     model.add(Conv2DTranspose(10, (3, 3) , strides=(1, 5), padding='same', activation='linear'))
-#     model.compile(loss='mean_squared_error', optimizer=Adam(1e-3)) 
-#     return model
+def autoencoder():
+    model = Sequential()
+    model.add(Conv2D(128, (5, 5),input_shape=h2.shape[1:], activation='relu', padding='same'))
+    model.add(AveragePooling2D((1, 5)))
+    model.add(Conv2D(32, (3, 3),activation='relu', padding='same'))
+    model.add(AveragePooling2D((1, 5)))
+    model.add(Conv2D(32,(3,3),activation='linear', padding='same'))
+    model.add(Conv2DTranspose(32, (3,3), strides=(1, 1), padding='same', activation='relu'))
+    model.add(Conv2DTranspose(128,(3,3), strides=(1, 5), padding='same', activation='relu'))
+    #model.add(ZeroPadding2D(((0, 0), (2, 1))))
+    model.add(Conv2DTranspose(10, (3, 3) , strides=(1, 5), padding='same', activation='linear'))
+    model.compile(loss='mean_squared_error', optimizer=Adam(1e-3)) 
+    return model
 
-# ae = autoencoder()
-# # ae.summary()
+ae = autoencoder()
+# ae.summary()
 
-# print("Try AutoEncoder. Train-test split for AutoEncoder...")
-# data, data_v  = train_test_split(h2, test_size=0.5, random_state=54) 
-# data.shape
+print("Try AutoEncoder. Train-test split for AutoEncoder...")
+data, data_v  = train_test_split(h2, test_size=0.5, random_state=54) 
+data.shape
 
-# print("training AutoEncoder...")
-# for i in range(5):
-#     ae.fit_generator(data_gen(data),validation_data=data_gen(data_v), epochs=1, steps_per_epoch=len(data),
-#                      validation_steps=len(data_v))
+print("training AutoEncoder...")
+for i in range(5):
+    ae.fit_generator(data_gen(data),validation_data=data_gen(data_v), epochs=1, steps_per_epoch=len(data),
+                     validation_steps=len(data_v))
 
-# print("applying encoder on original data...")
-# encoder = Model(ae.input, ae.layers[-5].output)
-# h2_ae = encoder.predict(h2)
-# h2_ae_shape = h2_ae.shape
-# h2_ae_1dcnn = h2_ae.reshape(h2_ae_shape[0], h2_ae_shape[1], -1)
+print("applying encoder on original data...")
+encoder = Model(ae.input, ae.layers[-5].output)
+h2_ae = encoder.predict(h2)
+h2_ae_shape = h2_ae.shape
+#h2_ae_1dcnn = h2_ae.reshape(h2_ae_shape[0], h2_ae_shape[1], -1)
+
+with open('all5_ae.npy', 'wb') as f:
+    np.save(f, h2_ae)
+    np.save(f, Pos)
+
+print("Done outputting final results after DR!")
 
 # def dnn_ae_model(opt=Adam(1e-3), dropout_rate=0.2):
 #     model = Sequential()

@@ -86,9 +86,9 @@ def get_data(data_file):
 
 # load data from pre-saved file
 print("Loading all training data...")
-with open('all_ae.npy', 'rb') as f:
+with open('all.npy', 'rb') as f:
     # 4979 * 56 * 925 * 10
-    h2_ae = np.load(f)
+    h2 = np.load(f)
     Pos = np.load(f)
 
 # # Execute PCA on h2
@@ -103,8 +103,8 @@ with open('all_ae.npy', 'rb') as f:
 #         evr = np.cumsum(pca.explained_variance_ratio_)
 #         evrs.append(evr)
 
-# print("Train-test split the dataset")
-# x_train0, x_test0, y_train0, y_test0 = train_test_split(h2, Pos, test_size=0.1, random_state=42)
+print("Train-test split the dataset")
+x_train0, x_test0, y_train0, y_test0 = train_test_split(h2, Pos, test_size=0.1, random_state=42)
 
 # print("Train-test split the PCA dataset")
 # x_train, x_test, y_train, y_test = train_test_split(h2_pca, Pos, test_size=0.1, random_state=42)
@@ -115,24 +115,24 @@ with open('all_ae.npy', 'rb') as f:
 # x_train_1d, x_test_1d, y_train_1d, y_test_1d = train_test_split(h2_pca_1dcnn, Pos, test_size=0.1, random_state=42)
 
 
-# def keras_model1(opt=Adam(1e-3)):
-#     model = Sequential()
-#     model.add(Conv2D(3,(5,5), input_shape=(x_train0.shape[1:]), activation='relu'))
-#     model.add(Conv2D(6,(5,5), activation='relu'))
-#     model.add(Conv2D(8,(5,5), activation='relu'))
-#     model.add(Flatten())
-# #     model.add(Dense(8192, activation='relu'))
-# #     model.add(Dense(4096, activation='relu'))
-# #     model.add(Dense(3072, activation='relu'))
-# #     model.add(Dense(2048, activation='relu'))
-#     model.add(Dense(1024, activation='relu'))
-#     model.add(Dense(512, activation='relu'))
-#     model.add(Dense(128, activation='relu'))
-#     model.add(Dense(32, activation='relu'))
-#     model.add(Dense(8, activation='relu'))
-#     model.add(Dense(3))
-#     model.compile(loss='mean_absolute_percentage_error', optimizer=opt) 
-#     return model
+def keras_model1(opt=Adam(1e-3)):
+    model = Sequential()
+    model.add(Conv2D(3,(5,5), input_shape=(x_train0.shape[1:]), activation='relu'))
+    model.add(Conv2D(6,(5,5), activation='relu'))
+    model.add(Conv2D(8,(5,5), activation='relu'))
+    model.add(Flatten())
+#     model.add(Dense(8192, activation='relu'))
+#     model.add(Dense(4096, activation='relu'))
+#     model.add(Dense(3072, activation='relu'))
+#     model.add(Dense(2048, activation='relu'))
+    model.add(Dense(1024, activation='relu'))
+    model.add(Dense(512, activation='relu'))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dense(8, activation='relu'))
+    model.add(Dense(3))
+    model.compile(loss='mean_absolute_percentage_error', optimizer=opt) 
+    return model
 
 def dnn_model(opt=Adam(1e-3), dropout_rate=0.2):
     model = Sequential()
@@ -168,39 +168,39 @@ def cnn_model1(input_shape, opt=Adam(1e-3), dropout_rate=0.2):
     return model
 
 
-# def data_gen(data):
-#     for i in range(len(data)):
-#         yield (data[i: i+1],data[i: i+1])
+def data_gen(data):
+    for i in range(len(data)):
+        yield (data[i: i+1],data[i: i+1])
 
-# def autoencoder():
-#     model = Sequential()
-#     model.add(Conv2D(128, (5, 5),input_shape=h2.shape[1:], activation='relu', padding='same'))
-#     model.add(AveragePooling2D((1, 5)))
-#     model.add(Conv2D(32, (3, 3),activation='relu', padding='same'))
-#     model.add(AveragePooling2D((1, 5)))
-#     model.add(Conv2D(32,(3,3),activation='linear', padding='same'))
-#     model.add(Conv2DTranspose(32, (3,3), strides=(1, 1), padding='same', activation='relu'))
-#     model.add(Conv2DTranspose(128,(3,3), strides=(1, 5), padding='same', activation='relu'))
-#     #model.add(ZeroPadding2D(((0, 0), (2, 1))))
-#     model.add(Conv2DTranspose(10, (3, 3) , strides=(1, 5), padding='same', activation='linear'))
-#     model.compile(loss='mean_squared_error', optimizer=Adam(1e-3)) 
-#     return model
+def autoencoder():
+    model = Sequential()
+    model.add(Conv2D(128, (5, 5),input_shape=h2.shape[1:], activation='relu', padding='same'))
+    model.add(AveragePooling2D((1, 5)))
+    model.add(Conv2D(32, (3, 3),activation='relu', padding='same'))
+    model.add(AveragePooling2D((1, 5)))
+    model.add(Conv2D(32,(3,3),activation='linear', padding='same'))
+    model.add(Conv2DTranspose(32, (3,3), strides=(1, 1), padding='same', activation='relu'))
+    model.add(Conv2DTranspose(128,(3,3), strides=(1, 5), padding='same', activation='relu'))
+    #model.add(ZeroPadding2D(((0, 0), (2, 1))))
+    model.add(Conv2DTranspose(10, (3, 3) , strides=(1, 5), padding='same', activation='linear'))
+    model.compile(loss='mean_squared_error', optimizer=Adam(1e-3)) 
+    return model
 
-# ae = autoencoder()
-# # ae.summary()
+ae = autoencoder()
+# ae.summary()
 
-# print("Try AutoEncoder. Train-test split for AutoEncoder...")
-# data, data_v  = train_test_split(h2, test_size=0.5, random_state=54) 
-# data.shape
+print("Try AutoEncoder. Train-test split for AutoEncoder...")
+data, data_v  = train_test_split(h2, test_size=0.5, random_state=54) 
+data.shape
 
-# print("training AutoEncoder...")
-# for i in range(5):
-#     ae.fit_generator(data_gen(data),validation_data=data_gen(data_v), epochs=1, steps_per_epoch=len(data),
-#                      validation_steps=len(data_v))
+print("training AutoEncoder...")
+for i in range(5):
+    ae.fit_generator(data_gen(data),validation_data=data_gen(data_v), epochs=1, steps_per_epoch=len(data),
+                     validation_steps=len(data_v))
 
-# print("applying encoder on original data...")
-# encoder = Model(ae.input, ae.layers[-5].output)
-# h2_ae = encoder.predict(h2)
+print("applying encoder on original data...")
+encoder = Model(ae.input, ae.layers[-5].output)
+h2_ae = encoder.predict(h2)
 h2_ae_shape = h2_ae.shape
 h2_ae_1dcnn = h2_ae.reshape(h2_ae_shape[0], h2_ae_shape[1], -1)
 
@@ -244,30 +244,30 @@ def random_sampling(classifier, X_pool):
     return [query_idx], X_pool[query_idx]
 
 
-n_queries = 3500
-#queries_num = np.linspace(100, 3500, 35)
+n_queries = 100
+queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
-chosen_samples =[]
-print("Initialize active learner...")
-regressor = ActiveLearner(
+for n_queries in queries_num:
+    chosen_samples =[]
+    print("Initialize active learner...")
+    regressor = ActiveLearner(
             estimator=model_ae,
             query_strategy=random_sampling,
             X_training=train_x_al, y_training=train_y_al
-)
-print(f"active learning for {n_queries} epochs")
-for i in range(n_queries + 1):
-
-        # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
-    query_idx, query_instance = regressor.query(pool_x_al)
-    chosen_samples.append(pool_y_al[query_idx])
-    regressor.teach(pool_x_al[query_idx], pool_y_al[query_idx])
-    if i % 100 == 0:
-    	
-    	get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
-    	y_pred = regressor.predict(x_test_ae_cnn)
-    	mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
-    	mse_dict[n_queries] = mse
-    	print(f"Evaluating model at {i}th query...mse:{mse}")
+    )
+    print(f"active learning for {n_queries} epochs")
+    for idx in range(int(n_queries)):
+        if idx % 50 == 0:
+            print(idx)
+            # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+        query_idx, query_instance = regressor.query(pool_x_al)
+        chosen_samples.append(pool_y_al[query_idx])
+        regressor.teach(pool_x_al[query_idx], pool_y_al[query_idx])
+    print(f"Evaluating model at {n_queries} queries")
+    get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+    y_pred = regressor.predict(x_test_ae_cnn)
+    mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
+    mse_dict[n_queries] = mse
 
 #print("training cnn model on ae...")
 # lr = 5e-3
@@ -280,15 +280,15 @@ for i in range(n_queries + 1):
 #                  callbacks=[earlystopper], batch_size=4, verbose=1)
 
 print("saving model...")
-model_ae.save("models/model_ae_al_random_all.h5")
+#model_ae.save("/tmp/c693s270/model_ae_al_uncertainty_100.h5")
 print("making predictions & saving results...")
 preds = model_ae.predict(x_test_ae_cnn)
 result = pd.DataFrame(preds, columns=["x", "y", "z"])
 print(f"{len(result)} rows")
-result.to_csv("preds/cnn_ae_al_random_all_preds.csv")
+#result.to_csv("/tmp/c693s270/cnn_ae_al_uncertainty_100_preds.csv")
 print("saving chosen samples")
 df_chosen = pd.DataFrame(np.array(chosen_samples).reshape(-1, 3), columns=["x", "y", "z"])
-df_chosen.to_csv("chosen/cnn_ae_al_random_all_chosen.csv")
+df_chosen.to_csv("/tmp/c693s270/cnn_ae_al_random_100_chosen.csv")
 print("All done!!")
 print(f"mse_dict: {mse_dict}")
 # print("saving model...")
