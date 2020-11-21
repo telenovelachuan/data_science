@@ -1,0 +1,1 @@
+A python implementation of neural network, including forward propagation, back propagation and activations.
