@@ -266,7 +266,7 @@ for i in range(n_queries + 1):
     	get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
     	y_pred = regressor.predict(x_test_ae_cnn)
     	mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
-    	mse_dict[n_queries] = mse
+    	mse_dict[i] = mse
     	print(f"Evaluating model at {i}th query...mse:{mse}")
 
 #print("training cnn model on ae...")
