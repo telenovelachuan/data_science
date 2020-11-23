@@ -251,7 +251,7 @@ chosen_samples =[]
 print("Initialize active learner...")
 regressor = ActiveLearner(
             estimator=model_ae,
-            query_strategy=random_sampling,
+            query_strategy=margin_sampling,
             X_training=train_x_al, y_training=train_y_al
 )
 print(f"active learning for {n_queries} epochs")
@@ -280,15 +280,15 @@ for i in range(n_queries + 1):
 #                  callbacks=[earlystopper], batch_size=4, verbose=1)
 
 print("saving model...")
-model_ae.save("models/model_ae_al_random_all.h5")
+model_ae.save("models/model_ae_al_margin_all.h5")
 print("making predictions & saving results...")
 preds = model_ae.predict(x_test_ae_cnn)
 result = pd.DataFrame(preds, columns=["x", "y", "z"])
 print(f"{len(result)} rows")
-result.to_csv("preds/cnn_ae_al_random_all_preds.csv")
+result.to_csv("preds/cnn_ae_al_margin_all_preds.csv")
 print("saving chosen samples")
 df_chosen = pd.DataFrame(np.array(chosen_samples).reshape(-1, 3), columns=["x", "y", "z"])
-df_chosen.to_csv("chosen/cnn_ae_al_random_all_chosen.csv")
+df_chosen.to_csv("chosen/cnn_ae_al_margin_all_chosen.csv")
 print("All done!!")
 print(f"mse_dict: {mse_dict}")
 # print("saving model...")
