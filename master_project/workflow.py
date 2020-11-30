@@ -264,7 +264,7 @@ print(
 print("Begin active learning process...")
 
 n_queries = 2700
-mode = "entropy"
+mode = "random"
 #queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
 all_chosen_samples = []
@@ -285,8 +285,9 @@ print(f"active learning for {n_queries} epochs")
 _chosen_x, _chosen_y = [], []
 # _new_x = copy.copy(train_x_al)
 # _new_y = copy.copy(train_y_al)
-for i in range(n_queries + 1):
-
+# for i in range(n_queries + 1):
+i = 0
+while i <= n_queries:
     # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
     query_idx, query_instance = regressor.query(pool_x_al)
     _x, _y = pool_x_al[query_idx], pool_y_al[query_idx]
@@ -297,6 +298,7 @@ for i in range(n_queries + 1):
 
     if i % 50 == 0 and i > 0:
         # batch mode AL teach
+        regressor_copy = copy.copy(regressor)
         regressor.teach(_chosen_x[0], _chosen_y[0], only_new=False)
         # _model = copy.copy(model_ae)
         # _new_x = np.concatenate([_new_x, _chosen_x[0]])
@@ -307,11 +309,17 @@ for i in range(n_queries + 1):
         # _model.fit(_new_x, _new_y, epochs=10, validation_data=(
         #     x_test_ae_cnn, y_test_ae_cnn), verbose=1)
         mse = get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+        if mse > 100000:
+            print(f"Encountered large MSE: {mse}")
+            i = i - 1
+            regressor = regressor_copy
+            continue
         # y_pred = regressor.predict(x_test_ae_cnn)
         # mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
         mse_dict[i] = mse
         print(f"Evaluating model at {i}th query...mse:{mse}")
         _chosen_x, _chosen_y = [], []
+    i += 1
 
 #print("training cnn model on ae...")
 # lr = 5e-3
