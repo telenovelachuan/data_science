@@ -44,7 +44,72 @@ type Env = [(String,FBAEVal)]
 -- Statically scoped eval
          
 evalM :: Env -> FBAE -> (Maybe FBAEVal)
-evalM _ _ = Nothing
+
+evalM e (Num x) = Just (NumV x)
+evalM e (Plus l r) = do {
+  (NumV l') <- (evalM e l);
+  (NumV r') <- (evalM e r);
+  return (NumV (l' + r'))
+}
+evalM e (Minus l r) = do {
+  (NumV l') <- (evalM e l);
+  (NumV r') <- (evalM e r);
+  return (NumV (l' - r'))
+}
+evalM e (Mult l r) = do {
+  (NumV l') <- (evalM e l);
+  (NumV r') <- (evalM e r);
+  return (NumV (l' * r'))
+}
+evalM e (Div l r) = do {
+  (NumV l') <- (evalM e l);
+  (NumV r') <- (evalM e r);
+  return (NumV (div l' r'))
+}
+evalM e (Bind i v b) = do {
+  v' <- (evalM e v);
+  evalM ((i, v'):e) b
+}
+evalM e (Lambda i t b) = do {
+  Just (ClosureV i b e)
+}
+evalM e (App f a) = do {
+  (ClosureV i b e') <- (evalM e f);
+  a' <- (evalM e a);
+  (evalM (i, a'):e' b)
+}
+evalM e (Id x) = (lookup x e)
+evalM e (Boolean b) = Just (BooleanV b)
+evalM e (And l r) = do {
+  (BooleanV l') <- (evalM e l);
+  (BooleanV r') <- (evalM e r);
+  return (BooleanV (l' && r'))
+}
+evalM e (Or l r) = do {
+  (BooleanV l') <- (evalM e l);
+  (BooleanV r') <- (evalM e r);
+  return (BooleanV (l' || r'))
+}
+evalM e (Leq l r) = do {
+  (BooleanV l') <- (evalM e l);
+  (BooleanV r') <- (evalM e r);
+  return (BooleanV (l' <= r'))
+}
+evalM e (IsZero x) = do {
+  (NumV x') <- (evalM e x);
+  return (BooleanV (x' == 0))
+}
+evalM e (If a b c) = do {
+  (BooleanV a') <- (evalM e a);
+  if a' then (evalM e b) else (evalM e c)
+}
+evalM e (Fix f) = do {
+  (ClosureV i b e') <- (evalM e f);
+  
+}
+
+
+--evalM _ _ = Nothing
 
 -- Type inference function
 
