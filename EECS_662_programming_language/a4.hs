@@ -41,6 +41,27 @@ data FBAEVal where
 
 type Env = [(String,FBAEVal)]
 
+-- subst function
+subst :: String -> FBAE -> FBAE -> FBAE
+subst x v (Num n) = (Num n)
+subst x v (Plus l r) = (Plus (subst x v l) (subst x v r))
+subst x v (Minus l r) = (Minus (subst x v l) (subst x v r))
+subst x v (Mult l r) = (Mult (subst x v l) (subst x v r))
+subst x v (Div l r) = (Div (subst x v l) (subst x v r))
+
+subst x v (Bind x' v' b') = if x==x' then (Bind x' (subst x v v') b') else (Bind x' (subst x v v') (subst x v b'))
+subst x v (Id x') = if x == x' then v else (Id x')
+subst x v (Lambda x' t' b') = (Lambda x' t' (subst x v b'))
+subst x v (App f' a') = (App (subst x v f') (subst x v a') )
+subst x v (Boolean b) = (Boolean b)
+subst x v (And l r) = (And (subst x v l) (subst x v r))
+subst x v (Or l r) = (Or (subst x v l) (subst x v r))
+subst x v (Leq l r) = (Leq (subst x v l) (subst x v r))
+subst x v (IsZero a) = (IsZero (subst x v a))
+subst x v (If c t f) = (If (subst x v c) (subst x v t) (subst x v f))
+subst x v (Fix f) = (Fix (subst x v f))
+
+
 -- Statically scoped eval
          
 evalM :: Env -> FBAE -> (Maybe FBAEVal)
@@ -76,7 +97,7 @@ evalM e (Lambda i t b) = do {
 evalM e (App f a) = do {
   (ClosureV i b e') <- (evalM e f);
   a' <- (evalM e a);
-  (evalM (i, a'):e' b)
+  (evalM ((i, a'):e') b)
 }
 evalM e (Id x) = (lookup x e)
 evalM e (Boolean b) = Just (BooleanV b)
@@ -105,7 +126,7 @@ evalM e (If a b c) = do {
 }
 evalM e (Fix f) = do {
   (ClosureV i b e') <- (evalM e f);
-  
+  (evalM e' (subst i (Fix f) b))
 }
 
 
@@ -116,7 +137,72 @@ evalM e (Fix f) = do {
 type Cont = [(String,TFBAE)]
 
 typeofM :: Cont -> FBAE -> (Maybe TFBAE)
-typeofM _ _ = Nothing
+typeofM c (Num x) = Just TNum
+typeofM c (Boolean b) = Just TBool
+typeofM c (Plus l r) = do {
+  TNum <- (typeofM c l);
+  TNum <- (typeofM c r);
+  return TNum;
+}
+typeofM c (Minus l r) = do {
+  TNum <- (typeofM c l);
+  TNum <- (typeofM c r);
+  return TNum;
+}
+typeofM c (Mult l r) = do {
+  TNum <- (typeofM c l);
+  TNum <- (typeofM c r);
+  return TNum;
+}
+typeofM c (Div l r) = do {
+  TNum <- (typeofM c l);
+  TNum <- (typeofM c r);
+  return TNum;
+}
+typeofM c (And l r) = do {
+  TBool <- (typeofM c l);
+  TBool <- (typeofM c r);
+  return TBool;
+}
+typeofM c (Or l r) = do {
+  TBool <- (typeofM c l);
+  TBool <- (typeofM c r);
+  return TBool;
+}
+typeofM c (Leq l r) = do {
+  TBool <- (typeofM c l);
+  TBool <- (typeofM c r);
+  return TBool;
+}
+typeofM c (IsZero x) = do {
+  TBool <- (typeofM c x);
+  return TBool;
+}
+typeofM c (If x y z) = do {
+  TBool <- (typeofM c x);
+  y' <- (typeofM c y);
+  z' <- (typeofM c z);
+  if y'==z' then return y' else Nothing
+}
+typeofM c (Bind i v b) = do {
+  v' <- (typeofM c v);
+  (typeofM ((i, v'):c) b)
+}
+typeofM c (Lambda i t b) = do {
+  r <- (typeofM ((i, t):c) b);
+  return (t:->:r) 
+}
+typeofM c (App f a) = do {
+  a' <- (typeofM c a);
+  (d:->:r) <- (typeofM c f);
+  if d==a' then return r else Nothing 
+}
+typeofM c (Id i) = lookup i c
+typeofM c (Fix f) = do {
+  (d:->:r) <- (typeofM c f);
+  return r
+}
+--typeofM _ _ = Nothing
 
 
 -- Interpreter
