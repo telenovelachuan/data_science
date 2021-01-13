@@ -257,14 +257,15 @@ def random_sampling(classifier, X_pool):
 
 
 # 1. Fit on original training data
-model_ae.fit(train_x_al, train_y_al, epochs=5, validation_data=(
+print(f"train_x_al:{train_x_al.shape}, train_y_al:{train_y_al.shape}")
+model_ae.fit(train_x_al, train_y_al, epochs=1, validation_data=(
     x_test_ae_cnn, y_test_ae_cnn), verbose=1)
 print(
     f"Initial round of training finished, MSE:{get_prediction_precision(model_ae, x_test_ae_cnn, y_test_ae_cnn)}")
 print("Begin active learning process...")
 
-n_queries = 2700
-mode = "random"
+n_queries = 1700
+mode = "uncertainty"
 #queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
 all_chosen_samples = []
@@ -282,11 +283,13 @@ regressor = ActiveLearner(
 )
 print(f"active learning for {n_queries} epochs")
 
+#_chosen_x, _chosen_y = np.array([]), np.array([])
 _chosen_x, _chosen_y = [], []
-# _new_x = copy.copy(train_x_al)
-# _new_y = copy.copy(train_y_al)
+#_new_x = copy.copy(train_x_al)
+#_new_y = copy.copy(train_y_al)
 # for i in range(n_queries + 1):
 i = 0
+xs, ys = [], []
 while i <= n_queries:
     # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
     query_idx, query_instance = regressor.query(pool_x_al)
@@ -295,30 +298,49 @@ while i <= n_queries:
     all_chosen_samples.append(_y)
     _chosen_x.append(_x)
     _chosen_y.append(_y)
+    #_chosen_x = np.append(_chosen_x, _x)
+    #_chosen_y = np.append(_chosen_y, _y)
+    xs.append(_x)
+    ys.append(_y)
 
     if i % 50 == 0 and i > 0:
         # batch mode AL teach
         regressor_copy = copy.copy(regressor)
-        regressor.teach(_chosen_x[0], _chosen_y[0], only_new=False)
-        # _model = copy.copy(model_ae)
-        # _new_x = np.concatenate([_new_x, _chosen_x[0]])
-        # _new_y = np.concatenate([_new_y, _chosen_y[0]])
+        #regressor.teach(_chosen_x[0], _chosen_y[0], only_new=False)
 
-        #model_ae.fit(_chosen_x[0], _chosen_y[0], validation_data=(x_test_ae_cnn, y_test_ae_cnn), verbose=1)
+        # _model = copy.copy(model_ae)
+        #_new_x = np.concatenate([_new_x, _x])
+        #_new_y = np.concatenate([_new_y, _y])
+        xs_backup = xs.copy()
+        ys_backup = ys.copy()
+        xs = np.array(xs)
+        ys = np.array(ys)
+        x_shape, y_shape = xs.shape, ys.shape
+        xs = xs.reshape(x_shape[0], -1, x_shape[-1])
+        ys = ys.reshape(y_shape[0], -1)
+        print(f"xs:{xs.shape}, ys:{ys.shape}")
+        regressor.teach(xs, ys, only_new=False)
+        #model_ae.fit(xs, ys, validation_data=(x_test_ae_cnn, y_test_ae_cnn), verbose=1)
 
         # _model.fit(_new_x, _new_y, epochs=10, validation_data=(
         #     x_test_ae_cnn, y_test_ae_cnn), verbose=1)
         mse = get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
-        if mse > 100000:
+        #mse = get_prediction_precision(model_ae, x_test_ae_cnn, y_test_ae_cnn)
+
+        if mse > 120000:
             print(f"Encountered large MSE: {mse}")
             i = i - 1
             regressor = regressor_copy
+            xs = xs_backup
+            ys = ys_backup
             continue
+
         # y_pred = regressor.predict(x_test_ae_cnn)
         # mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
         mse_dict[i] = mse
         print(f"Evaluating model at {i}th query...mse:{mse}")
         _chosen_x, _chosen_y = [], []
+        xs, ys = [], []
     i += 1
 
 #print("training cnn model on ae...")

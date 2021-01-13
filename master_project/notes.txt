@@ -1,0 +1,22 @@
+MSE change for active learning, distance over probability
+CDF/PDF
+
+comparison between active leraning & tradition
+
+\begin{itemize}
+    \item Argue that why active learning is needed for localization problem 
+    \item \textcolor{blue}{Benefits of active learning compared with traditional methods 
+    \begin{itemize}
+        \item In terms of training time, 
+        \item number of samples, 
+        \item what else? 
+    \end{itemize}}
+    \item Then, once we convince the reader that active learning is better, then we answer which strategy is suitable for this specific problem 
+    \item Now, we have all these comparisons between different methods. 
+    \item \textcolor{blue}{Final accuracy results of active learning when we are running over 0.2 of labeled data. We can add CDF plot here.} 
+\end{itemize}
+
+enhance the fact: less samples needed.
+enhance the fact: uncertainty strategy selects samples on borders
+Bibliography
+active deep learning
