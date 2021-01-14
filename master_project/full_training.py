@@ -86,10 +86,14 @@ def get_prediction_precision(regressor, x_test, y_test):
 
 # Full fit on original training data
 print(f"x_train_ae_cnn:{x_train_ae_cnn.shape}, y_train_ae_cnn:{y_train_ae_cnn.shape}")
-model_ae.fit(x_train_ae_cnn, y_train_ae_cnn, epochs=50, validation_data=(x_test_ae_cnn, y_test_ae_cnn), verbose=1)
+model_ae.fit(x_train_ae_cnn, y_train_ae_cnn, epochs=34, validation_data=(x_test_ae_cnn, y_test_ae_cnn), verbose=1)
 print("Finished full training, evaluating...")
 mse = get_prediction_precision(model_ae, x_test_ae_cnn, y_test_ae_cnn)
 print(f"final MSE: {mse}")
+print("saving predictions...")
+preds = model_ae.predict(x_test_ae_cnn)
+result = pd.DataFrame(preds, columns=["x", "y", "z"])
+result.to_csv(f"preds/cnn_ae_full_all_preds.csv")
 
 
 

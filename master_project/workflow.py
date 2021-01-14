@@ -265,7 +265,7 @@ print(
 print("Begin active learning process...")
 
 n_queries = 1700
-mode = "uncertainty"
+mode = "margin"
 #queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
 all_chosen_samples = []
@@ -327,7 +327,14 @@ while i <= n_queries:
         mse = get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
         #mse = get_prediction_precision(model_ae, x_test_ae_cnn, y_test_ae_cnn)
 
-        if mse > 120000:
+        if i <= 300 and mse > 120000:
+            print(f"Encountered large MSE: {mse}")
+            i = i - 1
+            regressor = regressor_copy
+            xs = xs_backup
+            ys = ys_backup
+            continue
+        elif i >= 5 and mse > 80000:
             print(f"Encountered large MSE: {mse}")
             i = i - 1
             regressor = regressor_copy
