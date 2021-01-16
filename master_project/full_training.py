@@ -7,7 +7,6 @@ import os.path
 import math
 
 import pandas as pd
-import numpy as np
 from numpy import inf
 from matplotlib import pyplot as plt
 import seaborn as sns
@@ -29,14 +28,12 @@ import copy
 CTW_labelled = "/home/c693s270/"
 
 def get_data(data_file):
-
     f = h5py.File(data_file, 'r')
     H_Re = f['H_Re'][:]  # shape (sample size, 56, 924, 5)
     H_Im = f['H_Im'][:]  # shape (sample size, 56, 924, 5)
     SNR = f['SNR'][:]  # shape (sample size, 56, 5)
     Pos = f['Pos'][:]  # shape(sample size, 3)
     f.close()
-
     return H_Re, H_Im, SNR, Pos
 
 # load data from pre-saved file
@@ -68,9 +65,14 @@ h2_ae_shape = h2_ae.shape
 h2_ae_1dcnn = h2_ae.reshape(h2_ae_shape[0], h2_ae_shape[1], -1)
 
 print("train-test splitting ae data...")
-x_train_ae_cnn, x_test_ae_cnn, y_train_ae_cnn, y_test_ae_cnn = train_test_split(
-    h2_ae_1dcnn, Pos, test_size=0.1, random_state=42)
+x_train_ae_cnn, x_test_ae_cnn, y_train_ae_cnn, y_test_ae_cnn = train_test_split(h2_ae_1dcnn, Pos, test_size=0.1, random_state=42)
 
+# shuffle the original training data
+def unison_shuffled_copies(a, b):
+    assert len(a) == len(b)
+    p = np.random.permutation(len(a))
+    return a[p], b[p]
+x_train_ae_cnn, y_train_ae_cnn = unison_shuffled_copies(x_train_ae_cnn, y_train_ae_cnn)
 
 print("constructing 1D-CNN model...")
 lr = 5e-3

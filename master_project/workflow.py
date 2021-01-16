@@ -265,7 +265,7 @@ print(
 print("Begin active learning process...")
 
 n_queries = 1700
-mode = "margin"
+mode = "uncertainty"
 #queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
 all_chosen_samples = []
@@ -290,10 +290,13 @@ _chosen_x, _chosen_y = [], []
 # for i in range(n_queries + 1):
 i = 0
 xs, ys = [], []
+pool_x_shape = pool_x_al.shape
 while i <= n_queries:
     # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
     query_idx, query_instance = regressor.query(pool_x_al)
     _x, _y = pool_x_al[query_idx], pool_y_al[query_idx]
+    pool_x_al = np.delete(pool_x_al, query_idx, axis=0)
+    pool_y_al = np.delete(pool_y_al, query_idx, axis=0)
     #print(f"_x:{_x}, _y:{_y}")
     all_chosen_samples.append(_y)
     _chosen_x.append(_x)
@@ -327,14 +330,14 @@ while i <= n_queries:
         mse = get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
         #mse = get_prediction_precision(model_ae, x_test_ae_cnn, y_test_ae_cnn)
 
-        if i <= 300 and mse > 120000:
+        if i <= 300 and mse > 150000:
             print(f"Encountered large MSE: {mse}")
             i = i - 1
             regressor = regressor_copy
             xs = xs_backup
             ys = ys_backup
             continue
-        elif i >= 5 and mse > 80000:
+        elif i > 300 and mse > 40000:
             print(f"Encountered large MSE: {mse}")
             i = i - 1
             regressor = regressor_copy
