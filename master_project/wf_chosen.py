@@ -40,8 +40,6 @@ def get_data(data_file):
 
     return H_Re, H_Im, SNR, Pos
 
-
-
 # # load data from file_1.hdf4
 
 # data_file = CTW_labelled + "file_" + str(1) + ".hdf5"
@@ -264,52 +262,23 @@ xs, ys = [], []
 xs_idx = []
 dist_dict = np.load('dist_dict.npy')
 dist_dict_pretrain = np.load('dist_dict_pretrain.npy')
-print(f"dist_dict loaded: {dist_dict.shape}")
 def location_based_sampling(classifier, X_pool):
     # add up pretrain distances with newly-chosen distances
     overall_distances = [sum([dist_dict[_chosen_idx][cur_idx] for _chosen_idx in xs_idx]) + dist_dict_pretrain[cur_idx] for cur_idx, x in enumerate(X_pool)]
     #distances = [sum([dist_dict[chosen_idx][cur_idx] for chosen_idx in xs_idx]) for cur_idx, x in enumerate(X_pool)]
     query_idx = overall_distances.index(max(overall_distances))
     return [query_idx], X_pool[query_idx]
-
+    
 
 # 1. Fit on original training data
 print(f"train_x_al:{train_x_al.shape}, train_y_al:{train_y_al.shape}")
-model_ae.fit(train_x_al, train_y_al, epochs=1, validation_data=(
+model_ae.fit(train_x_al, train_y_al, epochs=5, validation_data=(
     x_test_ae_cnn, y_test_ae_cnn), verbose=1)
 print(
     f"Initial round of training finished, MSE:{get_prediction_precision(model_ae, x_test_ae_cnn, y_test_ae_cnn)}")
 print("Begin active learning process...")
 
-# print("saving dist_dict...")
-# dist_dict = []
-# for i in range(len(pool_x_al)):
-#     if i % 100 == 0:
-#         print(f"{i} / {len(pool_x_al)}")
-#     _row = []
-#     for j in range(len(pool_x_al)):
-#         _row.append(distance(pool_x_al[i], pool_x_al[j]))
-#     dist_dict.append(_row)
-# dist_dict = np.array(dist_dict)
-# with open('dist_dict.npy', 'wb') as f:
-#     np.save(f, dist_dict)
-# print("dist_dict saved!")
-
-# print("saving dist_dict_pretrain...")
-# dist_dict = []
-# for i in range(len(pool_x_al)):
-#     if i % 100 == 0:
-#         print(f"{i} / {len(pool_x_al)}")
-#     s = sum([distance(pool_x_al[i], train_x_al[j]) for j in range(len(train_x_al))])
-#     if i == 0:
-#         print(f"at zero, pool_x_al[i]:{pool_x_al[i]}, sum:{s}")
-#     dist_dict.append(s)
-# dist_dict = np.array(dist_dict)
-# with open('dist_dict_pretrain.npy', 'wb') as f:
-#     np.save(f, dist_dict)
-# print("dist_dict_pretrain saved!")
-
-n_queries = 1700
+n_queries = 500
 mode = "lb"
 #queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
@@ -330,10 +299,12 @@ regressor = ActiveLearner(
 print(f"active learning for {n_queries} epochs")
 
 #_chosen_x, _chosen_y = np.array([]), np.array([])
+_chosen_x, _chosen_y = [], []
 #_new_x = copy.copy(train_x_al)
 #_new_y = copy.copy(train_y_al)
 # for i in range(n_queries + 1):
 i = 0
+xs, ys = [], []
 pool_x_shape = pool_x_al.shape
 while i <= n_queries:
     # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
@@ -343,10 +314,14 @@ while i <= n_queries:
     pool_y_al = np.delete(pool_y_al, query_idx, axis=0)
     #print(f"_x:{_x}, _y:{_y}")
     all_chosen_samples.append(_y)
-
+    _chosen_x.append(_x)
+    _chosen_y.append(_y)
+    #_chosen_x = np.append(_chosen_x, _x)
+    #_chosen_y = np.append(_chosen_y, _y)
     xs.append(_x)
     ys.append(_y)
     xs_idx.append(query_idx[0])
+
 
     if i % 50 == 0 and i > 0:
         # batch mode AL teach
@@ -381,7 +356,7 @@ while i <= n_queries:
             ys = ys_backup
             xs_idx = xs_idx_backup
             continue
-        elif i > 300 and mse > 40000:
+        elif i > 300 and mse > 70000:
             print(f"Encountered large MSE: {mse}")
             i = i - 1
             regressor = regressor_copy
@@ -394,6 +369,7 @@ while i <= n_queries:
         # mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
         mse_dict[i] = mse
         print(f"Evaluating model at {i}th query...mse:{mse}")
+        _chosen_x, _chosen_y = [], []
         xs, ys, xs_idx = [], [], []
     i += 1
 
@@ -407,17 +383,10 @@ while i <= n_queries:
 # hist_ae = model_ae.fit(x_train_ae_cnn, y_train_ae_cnn, epochs=50, validation_data=(x_test_ae_cnn, y_test_ae_cnn),
 #                  callbacks=[earlystopper], batch_size=4, verbose=1)
 
-print("saving model...")
-model_ae.save(f"models/model_ae_al1_{mode}_all.h5")
-print("making predictions & saving results...")
-preds = model_ae.predict(x_test_ae_cnn)
-result = pd.DataFrame(preds, columns=["x", "y", "z"])
-print(f"{len(result)} rows")
-result.to_csv(f"preds/cnn_ae_al1_{mode}_all_preds.csv")
 print("saving chosen samples")
 df_chosen = pd.DataFrame(
     np.array(all_chosen_samples).reshape(-1, 3), columns=["x", "y", "z"])
-df_chosen.to_csv(f"chosen/cnn_ae_al1_{mode}_all_chosen.csv")
+df_chosen.to_csv(f"chosen/cnn_ae_al1_{mode}_all_chosen_{n_queries}iter.csv")
 print(f"All done!! mode:{mode}")
 print(f"mse_dict: {mse_dict}")
 # print("saving model...")
