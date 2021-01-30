@@ -16,6 +16,7 @@ from plotly.offline import download_plotlyjs, init_notebook_mode, iplot
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
+from sklearn.cluster import KMeans
 
 from tensorflow.keras.models import Model, Sequential, load_model
 from tensorflow.keras.layers import Input, Activation, AveragePooling2D, Conv2DTranspose, ZeroPadding2D
@@ -96,48 +97,19 @@ with open('all_ae.npy', 'rb') as f:
     h2_ae = np.load(f)
     Pos = np.load(f)
 
-# # Execute PCA on h2
-# print("Execute PCA...")
-# condense_to = 55
-# h2_pca = np.empty((h2.shape[0], h2.shape[1], condense_to, h2.shape[3]))
-# evrs = []
-# for i in range(h2.shape[1]):
-#     for j in range(h2.shape[3]):
-#         pca = PCA(n_components=condense_to)
-#         h2_pca[:, i, :, j] = pca.fit_transform(h2[:, i, :, j])
-#         evr = np.cumsum(pca.explained_variance_ratio_)
-#         evrs.append(evr)
-
-# print("Train-test split the dataset")
-# x_train0, x_test0, y_train0, y_test0 = train_test_split(h2, Pos, test_size=0.1, random_state=42)
-
-# print("Train-test split the PCA dataset")
-# x_train, x_test, y_train, y_test = train_test_split(h2_pca, Pos, test_size=0.1, random_state=42)
-
-# print("Train-test split the data for 1D-CNN")
-# h2_pca_shape = h2_pca.shape
-# h2_pca_1dcnn = h2_pca.reshape(h2_pca_shape[0], h2_pca_shape[1], -1)
-# x_train_1d, x_test_1d, y_train_1d, y_test_1d = train_test_split(h2_pca_1dcnn, Pos, test_size=0.1, random_state=42)
+# cluster the dataset for classification
+pos_cluster = pd.DataFrame(Pos, columns=["x", "y", "z"])
+kmeans = KMeans(n_clusters=3, random_state=42).fit(pos_cluster)
+pos_cluster["cluster"] = kmeans.labels_
+pos_cluster["cluster"] = pos_cluster["cluster"].replace({0: "cluster 2", 1: "cluster 3", 2: "cluster 1"})
+pos_cluster["is_c1"] = 0
+pos_cluster.loc[pos_cluster.cluster == "cluster 1", 'is_c1'] = 1
+pos_cluster["is_c2"] = 0
+pos_cluster.loc[pos_cluster.cluster == "cluster 2", 'is_c2'] = 1
+pos_cluster["is_c3"] = 0
+pos_cluster.loc[pos_cluster.cluster == "cluster 3", 'is_c3'] = 1
 
 
-# def keras_model1(opt=Adam(1e-3)):
-#     model = Sequential()
-#     model.add(Conv2D(3,(5,5), input_shape=(x_train0.shape[1:]), activation='relu'))
-#     model.add(Conv2D(6,(5,5), activation='relu'))
-#     model.add(Conv2D(8,(5,5), activation='relu'))
-#     model.add(Flatten())
-# #     model.add(Dense(8192, activation='relu'))
-# #     model.add(Dense(4096, activation='relu'))
-# #     model.add(Dense(3072, activation='relu'))
-# #     model.add(Dense(2048, activation='relu'))
-#     model.add(Dense(1024, activation='relu'))
-#     model.add(Dense(512, activation='relu'))
-#     model.add(Dense(128, activation='relu'))
-#     model.add(Dense(32, activation='relu'))
-#     model.add(Dense(8, activation='relu'))
-#     model.add(Dense(3))
-#     model.compile(loss='mean_absolute_percentage_error', optimizer=opt)
-#     return model
 
 def dnn_model(opt=Adam(1e-3), dropout_rate=0.2):
     model = Sequential()
@@ -171,6 +143,25 @@ def cnn_model1(input_shape, opt=Adam(1e-3), dropout_rate=0.2):
     model.add(Dense(128, activation='relu'))
     model.add(Dense(3))
     model.compile(loss='mean_squared_error', optimizer=opt)
+    return model
+
+# model for outputting probability
+def cnn_model_clf(input_shape, opt=Adam(1e-3), dropout_rate=0.2):
+    model = Sequential()
+    model.add(Conv1D(16, 16, input_shape=input_shape, activation='relu'))
+    model.add(Conv1D(32, 16, activation='relu'))
+    model.add(Conv1D(32, 16, activation='relu'))
+    model.add(Flatten())
+    model.add(BatchNormalization())
+    model.add(Dense(512))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+    model.add(Dense(256))
+    model.add(BatchNormalization())
+    model.add(Activation('relu'))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dense(3, activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
     return model
 
 
@@ -227,23 +218,39 @@ def dnn_ae_model(opt=Adam(1e-3), dropout_rate=0.2):
     return model
 
 
+# print("train-test splitting ae data...")
+# x_train_ae, x_test_ae, y_train_ae, y_test_ae = train_test_split(
+#     h2_ae, Pos, test_size=0.1, random_state=42)
+# x_train_ae_cnn, x_test_ae_cnn, y_train_ae_cnn, y_test_ae_cnn = train_test_split(
+#     h2_ae_1dcnn, Pos, test_size=0.1, random_state=42)
+
+# print("splitting training data and active learning pool...")
+# train_x_al, pool_x_al, train_y_al, pool_y_al = train_test_split(
+#     x_train_ae_cnn, y_train_ae_cnn, test_size=0.8, random_state=42)
+# print(f"Test samples: {len(y_test_ae_cnn)}, pool size: {len(pool_y_al)}")
+
+# print("train-test splitting ae data on clustered pos...")
+# x_train_cluster, x_test_cluster, y_train_cluster, y_test_cluster = train_test_split(h2_ae_1dcnn, pos_cluster, test_size=0.1, random_state=42)
 print("train-test splitting ae data...")
-x_train_ae, x_test_ae, y_train_ae, y_test_ae = train_test_split(
-    h2_ae, Pos, test_size=0.1, random_state=42)
-x_train_ae_cnn, x_test_ae_cnn, y_train_ae_cnn, y_test_ae_cnn = train_test_split(
-    h2_ae_1dcnn, Pos, test_size=0.1, random_state=42)
+x_train_ae, x_test_ae, y_train_ae, y_test_ae = train_test_split(h2_ae, pos_cluster, test_size=0.1, random_state=42)
+x_train_ae_cnn, x_test_ae_cnn, y_train, y_test = train_test_split(h2_ae_1dcnn, pos_cluster, test_size=0.1, random_state=42)
 
+y_train_ae_cnn = y_train[["x", "y", "z"]].values
+y_test_ae_cnn = y_test[["x", "y", "z"]].values
 print("splitting training data and active learning pool...")
-train_x_al, pool_x_al, train_y_al, pool_y_al = train_test_split(
-    x_train_ae_cnn, y_train_ae_cnn, test_size=0.8, random_state=42)
-print(f"Test samples: {len(y_test_ae_cnn)}, pool size: {len(pool_y_al)}")
+train_x_al, pool_x_al, train_y_al, pool_y_al = train_test_split(x_train_ae_cnn, y_train_ae_cnn, test_size=0.8, random_state=42)
 
-print("constructing 1D-CNN model...")
+y_train_cluster = y_train[["is_c1", "is_c2", "is_c3"]].values
+y_test_cluster = y_test[["is_c1", "is_c2", "is_c3"]].values
+train_x_cluster, pool_x_cluster, train_y_cluster, pool_y_cluster = train_test_split(x_train_ae_cnn, y_train_cluster, test_size=0.8, random_state=42)
+
+
+print("constructing 1D-CNN models...")
 lr = 5e-3
 epochs = 50
 decay_rate = lr / 50
 model_ae = cnn_model1(train_x_al.shape[1:], opt=Adam(5e-3, decay=decay_rate))
-
+model_clf = cnn_model_clf(train_x_cluster.shape[1:], opt=Adam(5e-3, decay=decay_rate))
 
 def get_prediction_precision(regressor, x_test, y_test):
     y_pred = regressor.predict(x_test)
@@ -260,11 +267,10 @@ def random_sampling(classifier, X_pool):
 def distance(p1, p2):
     return np.linalg.norm(p1 - p2)
 
-xs, ys = [], []
+xs, ys_reg, ys_clf = [], [], []
 xs_idx = []
 dist_dict = np.load('dist_dict.npy')
 dist_dict_pretrain = np.load('dist_dict_pretrain.npy')
-print(f"dist_dict loaded: {dist_dict.shape}")
 def location_based_sampling(classifier, X_pool):
     # add up pretrain distances with newly-chosen distances
     overall_distances = [sum([dist_dict[_chosen_idx][cur_idx] for _chosen_idx in xs_idx]) + dist_dict_pretrain[cur_idx] for cur_idx, x in enumerate(X_pool)]
@@ -272,11 +278,22 @@ def location_based_sampling(classifier, X_pool):
     query_idx = overall_distances.index(max(overall_distances))
     return [query_idx], X_pool[query_idx]
 
+def location_based_sampling2(classifier, X_pool):
+    overall_distances = [sum([dist_dict[_chosen_idx][cur_idx] for _chosen_idx in xs_idx]) + dist_dict_pretrain[cur_idx] for cur_idx, x in enumerate(X_pool)]
+    overall_distances_np = np.array(overall_distances)
+    maxes = classifier.predict_proba(X_pool).max(axis=1)
+    uncertainties = np.full(len(overall_distances), 1) - maxes
+    product = overall_distances_np * uncertainties
+    query_idx = list(product).index(max(product))
+    return [query_idx], X_pool[query_idx]
+
 
 # 1. Fit on original training data
 print(f"train_x_al:{train_x_al.shape}, train_y_al:{train_y_al.shape}")
 model_ae.fit(train_x_al, train_y_al, epochs=1, validation_data=(
     x_test_ae_cnn, y_test_ae_cnn), verbose=1)
+model_clf.fit(train_x_cluster, train_y_cluster, epochs=1, validation_data=(
+    x_test_ae_cnn, y_test_cluster), verbose=1)
 print(
     f"Initial round of training finished, MSE:{get_prediction_precision(model_ae, x_test_ae_cnn, y_test_ae_cnn)}")
 print("Begin active learning process...")
@@ -311,21 +328,31 @@ print("Begin active learning process...")
 
 n_queries = 1700
 mode = "lb"
+clf_mode = "lb"
 #queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
-all_chosen_samples = []
+all_chosen_samples_reg = []
+all_chosen_samples_clf = []
+
 mode_dict = {
     "random": random_sampling,
     "uncertainty": uncertainty_sampling,
     "margin": margin_sampling,
     "entropy": entropy_sampling,
-    "lb": location_based_sampling
+    "lb": location_based_sampling,
+    "lb2": location_based_sampling2
 }
-print("Initialize active learner...")
+print("Initialize regression active learner...")
 regressor = ActiveLearner(
     estimator=model_ae,
     query_strategy=mode_dict[mode],
     X_training=train_x_al, y_training=train_y_al
+)
+print("Initialize classification active learner...")
+classifier = ActiveLearner(
+    estimator=model_clf,
+    query_strategy=mode_dict[clf_mode],
+    X_training=train_x_al, y_training=train_y_cluster
 )
 print(f"active learning for {n_queries} epochs")
 
@@ -335,58 +362,84 @@ print(f"active learning for {n_queries} epochs")
 # for i in range(n_queries + 1):
 i = 0
 pool_x_shape = pool_x_al.shape
+best_mse = 999999999
 while i <= n_queries:
     # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
-    query_idx, query_instance = regressor.query(pool_x_al)
-    _x, _y = pool_x_al[query_idx], pool_y_al[query_idx]
+    if mode not in ["lb", "random"]:
+        query_idx, query_instance = classifier.query(pool_x_al)
+    else:
+        query_idx, query_instance = regressor.query(pool_x_al)
+    _x, _y_reg, _y_clf = pool_x_al[query_idx], pool_y_al[query_idx], pool_y_cluster[query_idx]
     pool_x_al = np.delete(pool_x_al, query_idx, axis=0)
     pool_y_al = np.delete(pool_y_al, query_idx, axis=0)
+    pool_y_cluster = np.delete(pool_y_cluster, query_idx, axis=0)
     #print(f"_x:{_x}, _y:{_y}")
-    all_chosen_samples.append(_y)
+    all_chosen_samples_reg.append(_y_reg)
+    all_chosen_samples_clf.append(_y_clf)
 
     xs.append(_x)
-    ys.append(_y)
+    ys_reg.append(_y_reg)
+    ys_clf.append(_y_clf)
     xs_idx.append(query_idx[0])
 
     if i % 50 == 0 and i > 0:
         # batch mode AL teach
         regressor_copy = copy.copy(regressor)
+        classifier_copy = copy.copy(classifier)
         #regressor.teach(_chosen_x[0], _chosen_y[0], only_new=False)
 
         # _model = copy.copy(model_ae)
         #_new_x = np.concatenate([_new_x, _x])
         #_new_y = np.concatenate([_new_y, _y])
         xs_backup = xs.copy()
-        ys_backup = ys.copy()
+        ys_reg_backup = ys_reg.copy()
+        ys_clf_backup = ys_clf.copy()
         xs_idx_backup = xs_idx.copy()
         xs = np.array(xs)
-        ys = np.array(ys)
-        x_shape, y_shape = xs.shape, ys.shape
+        ys_reg = np.array(ys_reg)
+        ys_clf = np.array(ys_clf)
+        x_shape, y_shape = xs.shape, ys_reg.shape
         xs = xs.reshape(x_shape[0], -1, x_shape[-1])
-        ys = ys.reshape(y_shape[0], -1)
-        print(f"xs:{xs.shape}, ys:{ys.shape}")
-        regressor.teach(xs, ys, only_new=False)
+        ys_reg = ys_reg.reshape(y_shape[0], -1)
+        ys_clf = ys_clf.reshape(y_shape[0], -1)
+        print(f"xs:{xs.shape}, ys:{ys_reg.shape}")
+        regressor.teach(xs, ys_reg, only_new=False)
+        if mode not in ["lb", "random"]:
+            classifier.teach(xs, ys_clf, only_new=False)
         #model_ae.fit(xs, ys, validation_data=(x_test_ae_cnn, y_test_ae_cnn), verbose=1)
 
         # _model.fit(_new_x, _new_y, epochs=10, validation_data=(
         #     x_test_ae_cnn, y_test_ae_cnn), verbose=1)
         mse = get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
-        #mse = get_prediction_precision(model_ae, x_test_ae_cnn, y_test_ae_cnn)
+        if mse < best_mse:
+            print("best mse ever! saving model...")
+            model_ae.save(f"models/model_ae_al2_{mode}_best.h5")
+            print("saving predictions...")
+            preds = model_ae.predict(x_test_ae_cnn)
+            result = pd.DataFrame(preds, columns=["x", "y", "z"])
+            print(f"{len(result)} rows")
+            result.to_csv(f"preds/cnn_ae_al2_{mode}_best.csv")
+            best_mse = mse
+
 
         if i <= 300 and mse > 150000:
             print(f"Encountered large MSE: {mse}")
             i = i - 1
             regressor = regressor_copy
+            classifier = classifier_copy
             xs = xs_backup
-            ys = ys_backup
+            ys_reg = ys_reg_backup
+            ys_clf = ys_clf_backup
             xs_idx = xs_idx_backup
             continue
         elif i > 300 and mse > 40000:
             print(f"Encountered large MSE: {mse}")
             i = i - 1
             regressor = regressor_copy
+            classifier = classifier_copy
             xs = xs_backup
-            ys = ys_backup
+            ys_reg = ys_reg_backup
+            ys_clf = ys_clf_backup
             xs_idx = xs_idx_backup
             continue
 
@@ -394,7 +447,7 @@ while i <= n_queries:
         # mse = mean_squared_error(y_true=y_test_ae_cnn, y_pred=y_pred)
         mse_dict[i] = mse
         print(f"Evaluating model at {i}th query...mse:{mse}")
-        xs, ys, xs_idx = [], [], []
+        xs, ys_reg, ys_clf, xs_idx = [], [], [], []
     i += 1
 
 #print("training cnn model on ae...")
@@ -408,16 +461,16 @@ while i <= n_queries:
 #                  callbacks=[earlystopper], batch_size=4, verbose=1)
 
 print("saving model...")
-model_ae.save(f"models/model_ae_al1_{mode}_all.h5")
+model_ae.save(f"models/model_ae_al3_{mode}_all.h5")
 print("making predictions & saving results...")
 preds = model_ae.predict(x_test_ae_cnn)
 result = pd.DataFrame(preds, columns=["x", "y", "z"])
 print(f"{len(result)} rows")
-result.to_csv(f"preds/cnn_ae_al1_{mode}_all_preds.csv")
+result.to_csv(f"preds/cnn_ae_al3_{mode}_all_preds.csv")
 print("saving chosen samples")
 df_chosen = pd.DataFrame(
-    np.array(all_chosen_samples).reshape(-1, 3), columns=["x", "y", "z"])
-df_chosen.to_csv(f"chosen/cnn_ae_al1_{mode}_all_chosen.csv")
+    np.array(all_chosen_samples_reg).reshape(-1, 3), columns=["x", "y", "z"])
+df_chosen.to_csv(f"chosen/cnn_ae_al3_{mode}_all_chosen.csv")
 print(f"All done!! mode:{mode}")
 print(f"mse_dict: {mse_dict}")
 # print("saving model...")
