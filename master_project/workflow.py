@@ -366,6 +366,7 @@ print(f"active learning for {n_queries} epochs")
 i = 0
 pool_x_shape = pool_x_al.shape
 best_mse = 999999999
+best_iteration = -1
 while i <= n_queries:
     # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
     if mode not in ["lb", "random"]:
@@ -423,6 +424,7 @@ while i <= n_queries:
             print(f"{len(result)} rows")
             result.to_csv(f"preds/cnn_ae_al2_{mode}_best.csv")
             best_mse = mse
+            best_iteration = i
 
 
         if i <= 300 and mse > 100000:
@@ -476,6 +478,7 @@ df_chosen = pd.DataFrame(
 df_chosen.to_csv(f"chosen/cnn_ae_al3_{mode}_all_chosen.csv")
 print(f"All done!! mode:{mode}")
 print(f"mse_dict: {mse_dict}")
+print(f"best iteration: {best_iteration}")
 # print("saving model...")
 # model0.save('model3.h5')
 # print("All done!")

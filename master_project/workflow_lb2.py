@@ -101,14 +101,17 @@ with open('all_ae.npy', 'rb') as f:
 pos_cluster = pd.DataFrame(Pos, columns=["x", "y", "z"])
 kmeans = KMeans(n_clusters=3, random_state=42).fit(pos_cluster)
 pos_cluster["cluster"] = kmeans.labels_
-pos_cluster["cluster"] = pos_cluster["cluster"].replace({0: "cluster 2", 1: "cluster 3", 2: "cluster 1"})
+pos_cluster["cluster"] = pos_cluster["cluster"].replace({0: "cluster 1", 1: "cluster 2", 2: "cluster 3", 3: "cluster 4", 4: "cluster 5"})
 pos_cluster["is_c1"] = 0
 pos_cluster.loc[pos_cluster.cluster == "cluster 1", 'is_c1'] = 1
 pos_cluster["is_c2"] = 0
 pos_cluster.loc[pos_cluster.cluster == "cluster 2", 'is_c2'] = 1
 pos_cluster["is_c3"] = 0
 pos_cluster.loc[pos_cluster.cluster == "cluster 3", 'is_c3'] = 1
-
+pos_cluster["is_c4"] = 0
+pos_cluster.loc[pos_cluster.cluster == "cluster 4", 'is_c4'] = 1
+pos_cluster["is_c5"] = 0
+pos_cluster.loc[pos_cluster.cluster == "cluster 5", 'is_c5'] = 1
 
 
 def dnn_model(opt=Adam(1e-3), dropout_rate=0.2):
@@ -160,7 +163,7 @@ def cnn_model_clf(input_shape, opt=Adam(1e-3), dropout_rate=0.2):
     model.add(BatchNormalization())
     model.add(Activation('relu'))
     model.add(Dense(128, activation='relu'))
-    model.add(Dense(3, activation='softmax'))
+    model.add(Dense(5, activation='softmax'))
     model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
     return model
 
@@ -240,8 +243,8 @@ y_test_ae_cnn = y_test[["x", "y", "z"]].values
 print("splitting training data and active learning pool...")
 train_x_al, pool_x_al, train_y_al, pool_y_al = train_test_split(x_train_ae_cnn, y_train_ae_cnn, test_size=0.8, random_state=42)
 
-y_train_cluster = y_train[["is_c1", "is_c2", "is_c3"]].values
-y_test_cluster = y_test[["is_c1", "is_c2", "is_c3"]].values
+y_train_cluster = y_train[["is_c1", "is_c2", "is_c3", "is_c4", "is_c5"]].values
+y_test_cluster = y_test[["is_c1", "is_c2", "is_c3", "is_c4", "is_c5"]].values
 train_x_cluster, pool_x_cluster, train_y_cluster, pool_y_cluster = train_test_split(x_train_ae_cnn, y_train_cluster, test_size=0.8, random_state=42)
 
 
@@ -327,8 +330,7 @@ print("Begin active learning process...")
 # print("dist_dict_pretrain saved!")
 
 n_queries = 1700
-mode = "entropy"
-clf_mode = "entropy"
+mode = "lb2"
 #queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
 all_chosen_samples_reg = []
@@ -351,7 +353,7 @@ regressor = ActiveLearner(
 print("Initialize classification active learner...")
 classifier = ActiveLearner(
     estimator=model_clf,
-    query_strategy=mode_dict[clf_mode],
+    query_strategy=mode_dict[mode],
     X_training=train_x_al, y_training=train_y_cluster
 )
 print(f"active learning for {n_queries} epochs")
