@@ -1,5 +1,4 @@
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"]="2"  # specify which GPU(s) to be used
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
