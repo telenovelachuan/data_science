@@ -27,7 +27,8 @@ from modAL.uncertainty import entropy_sampling, margin_sampling, uncertainty_sam
 import copy
 
 CTW_labelled = "/home/c693s270/"
-
+CLUSTER_NUM = 5
+pretrain_npy_name = f'dist_dict_pretrain_{CLUSTER_NUM}cluster.npy'
 
 def get_data(data_file):
 
@@ -98,20 +99,15 @@ with open('all_ae.npy', 'rb') as f:
 
 # cluster the dataset for classification
 pos_cluster = pd.DataFrame(Pos, columns=["x", "y", "z"])
-kmeans = KMeans(n_clusters=5, random_state=42).fit(pos_cluster)
+kmeans = KMeans(n_clusters=CLUSTER_NUM, random_state=42).fit(pos_cluster)
 pos_cluster["cluster"] = kmeans.labels_
-pos_cluster["cluster"] = pos_cluster["cluster"].replace({0: "cluster 1", 1: "cluster 2", 2: "cluster 3", 3: "cluster 4", 4: "cluster 5"})
-pos_cluster["is_c1"] = 0
-pos_cluster.loc[pos_cluster.cluster == "cluster 1", 'is_c1'] = 1
-pos_cluster["is_c2"] = 0
-pos_cluster.loc[pos_cluster.cluster == "cluster 2", 'is_c2'] = 1
-pos_cluster["is_c3"] = 0
-pos_cluster.loc[pos_cluster.cluster == "cluster 3", 'is_c3'] = 1
-pos_cluster["is_c4"] = 0
-pos_cluster.loc[pos_cluster.cluster == "cluster 4", 'is_c4'] = 1
-pos_cluster["is_c5"] = 0
-pos_cluster.loc[pos_cluster.cluster == "cluster 5", 'is_c5'] = 1
-
+replace_dict = {}
+for i in range(CLUSTER_NUM):
+    replace_dict[i] = f"cluster {i + 1}"
+pos_cluster["cluster"] = pos_cluster["cluster"].replace(replace_dict)
+for i in range(CLUSTER_NUM):
+    pos_cluster[f"is_c{i + 1}"] = 0
+    pos_cluster.loc[pos_cluster.cluster == f"cluster {i}", f'is_c{i}'] = 1
 
 
 def dnn_model(opt=Adam(1e-3), dropout_rate=0.2):
@@ -163,7 +159,7 @@ def cnn_model_clf(input_shape, opt=Adam(1e-3), dropout_rate=0.2):
     model.add(BatchNormalization())
     model.add(Activation('relu'))
     model.add(Dense(128, activation='relu'))
-    model.add(Dense(5, activation='softmax'))
+    model.add(Dense(CLUSTER_NUM, activation='softmax'))
     model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
     return model
 
@@ -238,14 +234,34 @@ print("train-test splitting ae data...")
 x_train_ae, x_test_ae, y_train_ae, y_test_ae = train_test_split(h2_ae, pos_cluster, test_size=0.1, random_state=42)
 x_train_ae_cnn, x_test_ae_cnn, y_train, y_test = train_test_split(h2_ae_1dcnn, pos_cluster, test_size=0.1, random_state=42)
 
-y_train_ae_cnn = y_train[["x", "y", "z"]].values
+#y_train_ae_cnn = y_train[["x", "y", "z"]].values
 y_test_ae_cnn = y_test[["x", "y", "z"]].values
 print("splitting training data and active learning pool...")
-train_x_al, pool_x_al, train_y_al, pool_y_al = train_test_split(x_train_ae_cnn, y_train_ae_cnn, test_size=0.8, random_state=42)
+train_x_al, pool_x_al, train_y_al, pool_y_al = train_test_split(x_train_ae_cnn, y_train, test_size=0.8, random_state=42)
 
-y_train_cluster = y_train[["is_c1", "is_c2", "is_c3", "is_c4", "is_c5"]].values
-y_test_cluster = y_test[["is_c1", "is_c2", "is_c3", "is_c4", "is_c5"]].values
+cluster_bool_cols = [f"is_c{i + 1}" for i in range(CLUSTER_NUM)]
+y_train_cluster = y_train[cluster_bool_cols].values
+y_test_cluster = y_test[cluster_bool_cols].values
 train_x_cluster, pool_x_cluster, train_y_cluster, pool_y_cluster = train_test_split(x_train_ae_cnn, y_train_cluster, test_size=0.8, random_state=42)
+
+print("saving distance(pool dots, train dots of same cluster) into dist_dict_pretrain...")
+def distance(p1, p2):
+    return np.linalg.norm(p1 - p2)
+
+dist_dict = []
+for i in range(len(pool_x_al)):
+    if i % 100 == 0:
+        print(f"{i} / {len(pool_x_al)}")
+    _current_cluster = pool_y_al.iloc[i]["cluster"]
+    s = sum([distance(pool_x_al[i], train_x_al[j]) for j in range(len(train_x_al)) if _current_cluster == train_y_al.iloc[j]["cluster"]])
+    if i == 0:
+        print(f"at zero, pool_x_al[i]:{pool_x_al[i]}, sum:{s}")
+        print(f"result 0: {s}")
+    dist_dict.append(s)
+dist_dict = np.array(dist_dict)
+with open(pretrain_npy_name, 'wb') as f:
+    np.save(f, dist_dict)
+print("dist_dict_pretrain saved!")
 
 
 print("constructing 1D-CNN models...")
@@ -273,13 +289,17 @@ def distance(p1, p2):
 xs, ys_reg, ys_clf = [], [], []
 xs_idx = []
 dist_dict = np.load('dist_dict.npy')
-dist_dict_pretrain = np.load('dist_dict_pretrain.npy')
+dist_dict_pretrain = np.load(pretrain_npy_name)
 def location_based_sampling(classifier, X_pool):
     # add up pretrain distances with newly-chosen distances
     overall_distances = [sum([dist_dict[_chosen_idx][cur_idx] for _chosen_idx in xs_idx]) + dist_dict_pretrain[cur_idx] for cur_idx, x in enumerate(X_pool)]
     #distances = [sum([dist_dict[chosen_idx][cur_idx] for chosen_idx in xs_idx]) for cur_idx, x in enumerate(X_pool)]
-    query_idx = overall_distances.index(max(overall_distances))
-    return [query_idx], X_pool[query_idx]
+    overall_dist_sorted = sorted(overall_distances, reverse=True)
+    for _dist in overall_dist_sorted:
+        _query_idx = overall_distances.index(_dist)
+        if _query_idx in xs_idx:
+            continue
+    return [_query_idx], X_pool[_query_idx]
 
 def location_based_sampling2(classifier, X_pool):
     overall_distances = [sum([dist_dict[_chosen_idx][cur_idx] for _chosen_idx in xs_idx]) + dist_dict_pretrain[cur_idx] for cur_idx, x in enumerate(X_pool)]
@@ -287,15 +307,23 @@ def location_based_sampling2(classifier, X_pool):
     maxes = classifier.predict_proba(X_pool).max(axis=1)
     uncertainties = np.full(len(overall_distances), 1) - maxes
     product = overall_distances_np * uncertainties
-    query_idx = list(product).index(max(product))
+    #query_idx = list(product).index(max(product))
+    query_idx = -1
+    product_sorted = sorted(product, reverse=True)
+    for _prod in product_sorted:
+        _query_idx = list(product).index(_prod)
+        if _query_idx not in xs_idx:
+            query_idx = _query_idx
+            break
     return [query_idx], X_pool[query_idx]
 
 
 # 1. Fit on original training data
+train_y_al = train_y_al[["x", "y", "z"]].values
 print(f"train_x_al:{train_x_al.shape}, train_y_al:{train_y_al.shape}")
 model_ae.fit(train_x_al, train_y_al, epochs=1, validation_data=(
     x_test_ae_cnn, y_test_ae_cnn), verbose=1)
-model_clf.fit(train_x_cluster, train_y_cluster, epochs=1, validation_data=(
+model_clf.fit(train_x_cluster, train_y_cluster, epochs=5, validation_data=(
     x_test_ae_cnn, y_test_cluster), verbose=1)
 print(
     f"Initial round of training finished, MSE:{get_prediction_precision(model_ae, x_test_ae_cnn, y_test_ae_cnn)}")
@@ -364,6 +392,7 @@ print(f"active learning for {n_queries} epochs")
 # for i in range(n_queries + 1):
 i = 0
 pool_x_shape = pool_x_al.shape
+pool_y_al = pool_y_al[["x", "y", "z"]].values
 best_mse = 999999999
 best_iteration = -1
 while i <= n_queries:
@@ -373,9 +402,9 @@ while i <= n_queries:
     else:
         query_idx, query_instance = regressor.query(pool_x_al)
     _x, _y_reg, _y_clf = pool_x_al[query_idx], pool_y_al[query_idx], pool_y_cluster[query_idx]
-    pool_x_al = np.delete(pool_x_al, query_idx, axis=0)
-    pool_y_al = np.delete(pool_y_al, query_idx, axis=0)
-    pool_y_cluster = np.delete(pool_y_cluster, query_idx, axis=0)
+    # pool_x_al = np.delete(pool_x_al, query_idx, axis=0)
+    # pool_y_al = np.delete(pool_y_al, query_idx, axis=0)
+    # pool_y_cluster = np.delete(pool_y_cluster, query_idx, axis=0)
     #print(f"_x:{_x}, _y:{_y}")
     all_chosen_samples_reg.append(_y_reg)
     all_chosen_samples_clf.append(_y_clf)
