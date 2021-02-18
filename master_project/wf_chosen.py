@@ -29,7 +29,7 @@ from modAL.uncertainty import entropy_sampling, margin_sampling, uncertainty_sam
 import copy
 
 CTW_labelled = "/home/c693s270/"
-CLUSTER_NUM = 2
+CLUSTER_NUM = 5
 pretrain_npy_name = f'dist_dict_pretrain_{CLUSTER_NUM}cluster.npy'
 
 def get_data(data_file):
@@ -232,24 +232,26 @@ y_test_cluster = y_test[cluster_bool_cols].values
 train_x_cluster, pool_x_cluster, train_y_cluster, pool_y_cluster = train_test_split(x_train_ae_cnn, y_train_cluster, test_size=0.8, random_state=42)
 
 print("saving distance(pool dots, train dots of same cluster) into dist_dict_pretrain...")
+
 def distance(p1, p2):
     return np.linalg.norm(p1 - p2)
-    
-dist_dict = []
-for i in range(len(pool_x_al)):
-    if i % 100 == 0:
-        print(f"{i} / {len(pool_x_al)}")
-    _current_cluster = pool_y_al.iloc[i]["cluster"]
-    #s = sum([distance(pool_x_al[i], train_x_al[j]) for j in range(len(train_x_al)) if _current_cluster == train_y_al.iloc[j]["cluster"]])
-    s = sum([distance(pool_x_al[i], train_x_al[j]) for j in range(len(train_x_al))])
-    if i == 0:
-        print(f"at zero, pool_x_al[i]:{pool_x_al[i]}, sum:{s}")
-        print(f"result 0: {s}")
-    dist_dict.append(s)
-dist_dict = np.array(dist_dict)
-with open(pretrain_npy_name, 'wb') as f:
-    np.save(f, dist_dict)
-print("dist_dict_pretrain saved!")
+
+if not os.path.isfile(pretrain_npy_name):
+    dist_dict = []
+    for i in range(len(pool_x_al)):
+        if i % 100 == 0:
+            print(f"{i} / {len(pool_x_al)}")
+        _current_cluster = pool_y_al.iloc[i]["cluster"]
+        #s = sum([distance(pool_x_al[i], train_x_al[j]) for j in range(len(train_x_al)) if _current_cluster == train_y_al.iloc[j]["cluster"]])
+        s = sum([distance(pool_x_al[i], train_x_al[j]) for j in range(len(train_x_al))])
+        if i == 0:
+            print(f"at zero, pool_x_al[i]:{pool_x_al[i]}, sum:{s}")
+            print(f"result 0: {s}")
+        dist_dict.append(s)
+    dist_dict = np.array(dist_dict)
+    with open(pretrain_npy_name, 'wb') as f:
+        np.save(f, dist_dict)
+    print("dist_dict_pretrain saved!")
 
 print("constructing 1D-CNN model...")
 lr = 5e-3
@@ -306,7 +308,7 @@ def location_based_sampling2(classifier, X_pool):
         if _query_idx not in xs_idx:
             query_idx = _query_idx
             break
-    return [query_idx], X_pool[query_idx]
+    return [query_idx], [X_pool[query_idx]]
     
 
 # 1. Fit on original training data
@@ -320,8 +322,8 @@ print(
     f"Initial round of training finished, MSE:{get_prediction_precision(model_ae, x_test_ae_cnn, y_test_ae_cnn)}")
 print("Begin active learning process...")
 
+mode = "uncertainty"
 n_queries = 250
-mode = "lb2"
 
 #queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
@@ -357,21 +359,32 @@ if type(pool_y_al) != np.ndarray:
   pool_y_al = pool_y_al[["x", "y", "z"]].values
 pool_x_shape = pool_x_al.shape
 while i <= n_queries:
+    pool_x_al_unchosen = np.array([t for idx,t in enumerate(list(pool_x_al)) if idx not in xs_idx])
+    print(f"pool_x_al_unchosen:{pool_x_al_unchosen.shape}")
     if mode not in ["lb", "random"]:
-        query_idx, query_instance = classifier.query(pool_x_al)
+        query_idx, query_instance = classifier.query(pool_x_al_unchosen)
     else:
-        query_idx, query_instance = regressor.query(pool_x_al)
+        query_idx, query_instance = regressor.query(pool_x_al_unchosen)
+
+    query_idx = -1
+    for idx,x in enumerate(pool_x_al):
+        if np.array_equal(x, query_instance[0]):
+            query_idx = idx
+            break
     _x, _y_reg, _y_clf = pool_x_al[query_idx], pool_y_al[query_idx], pool_y_cluster[query_idx]
     # pool_x_al = np.delete(pool_x_al, query_idx, axis=0)
     # pool_y_al = np.delete(pool_y_al, query_idx, axis=0)
     # pool_y_cluster = np.delete(pool_y_cluster, query_idx, axis=0)
-    new_row = np.append(_y_reg[0], i)
+    new_row = np.append(_y_reg, i)
     all_chosen_samples_reg.append(new_row)
+    #print(f"all_chosen_samples_reg:{np.array(all_chosen_samples_reg).shape}")
     all_chosen_samples_clf.append(_y_clf)
     xs.append(_x)
     ys_reg.append(_y_reg)
     ys_clf.append(_y_clf)
-    xs_idx.append(query_idx[0])
+    if not type(query_idx) == int:
+        query_idx = query_idx[0]
+    xs_idx.append(query_idx)
 
 
     if i % 50 == 0 and i > 0:

@@ -27,7 +27,7 @@ from modAL.uncertainty import entropy_sampling, margin_sampling, uncertainty_sam
 import copy
 
 CTW_labelled = "/home/c693s270/"
-CLUSTER_NUM = 2
+CLUSTER_NUM = 5
 pretrain_npy_name = f'dist_dict_pretrain_{CLUSTER_NUM}cluster.npy'
 
 def get_data(data_file):
@@ -317,7 +317,7 @@ def location_based_sampling2(classifier, X_pool):
         if _query_idx not in xs_idx:
             query_idx = _query_idx
             break
-    return [query_idx], X_pool[query_idx]
+    return [query_idx], [X_pool[query_idx]]
 
 
 # 1. Fit on original training data
@@ -360,7 +360,7 @@ print("Begin active learning process...")
 # print("dist_dict_pretrain saved!")
 
 n_queries = 1700
-mode = "lb2"
+mode = "uncertainty"
 #queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
 all_chosen_samples_reg = []
@@ -398,11 +398,11 @@ pool_y_al = pool_y_al[["x", "y", "z"]].values
 best_mse = 999999999
 best_iteration = -1
 while i <= n_queries:
-    # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+    pool_x_al_unchosen = np.array([t for idx,t in enumerate(list(pool_x_al)) if idx not in xs_idx])
     if mode not in ["lb", "random"]:
-        query_idx, query_instance = classifier.query(pool_x_al)
+        query_idx, query_instance = classifier.query(pool_x_al_unchosen)
     else:
-        query_idx, query_instance = regressor.query(pool_x_al)
+        query_idx, query_instance = regressor.query(pool_x_al_unchosen)
     _x, _y_reg, _y_clf = pool_x_al[query_idx], pool_y_al[query_idx], pool_y_cluster[query_idx]
     # pool_x_al = np.delete(pool_x_al, query_idx, axis=0)
     # pool_y_al = np.delete(pool_y_al, query_idx, axis=0)
@@ -414,7 +414,9 @@ while i <= n_queries:
     xs.append(_x)
     ys_reg.append(_y_reg)
     ys_clf.append(_y_clf)
-    xs_idx.append(query_idx[0])
+    if not type(query_idx) == int:
+        query_idx = query_idx[0]
+    xs_idx.append(query_idx)
 
     if i % 50 == 0 and i > 0:
         # batch mode AL teach

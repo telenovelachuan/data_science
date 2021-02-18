@@ -248,20 +248,21 @@ print("saving distance(pool dots, train dots of same cluster) into dist_dict_pre
 def distance(p1, p2):
     return np.linalg.norm(p1 - p2)
 
-dist_dict = []
-for i in range(len(pool_x_al)):
-    if i % 100 == 0:
-        print(f"{i} / {len(pool_x_al)}")
-    _current_cluster = pool_y_al.iloc[i]["cluster"]
-    s = sum([distance(pool_x_al[i], train_x_al[j]) for j in range(len(train_x_al)) if _current_cluster == train_y_al.iloc[j]["cluster"]])
-    if i == 0:
-        print(f"at zero, pool_x_al[i]:{pool_x_al[i]}, sum:{s}")
-        print(f"result 0: {s}")
-    dist_dict.append(s)
-dist_dict = np.array(dist_dict)
-with open(pretrain_npy_name, 'wb') as f:
-    np.save(f, dist_dict)
-print("dist_dict_pretrain saved!")
+if not os.path.isfile(pretrain_npy_name):
+    dist_dict = []
+    for i in range(len(pool_x_al)):
+        if i % 100 == 0:
+            print(f"{i} / {len(pool_x_al)}")
+        _current_cluster = pool_y_al.iloc[i]["cluster"]
+        s = sum([distance(pool_x_al[i], train_x_al[j]) for j in range(len(train_x_al)) if _current_cluster == train_y_al.iloc[j]["cluster"]])
+        if i == 0:
+            print(f"at zero, pool_x_al[i]:{pool_x_al[i]}, sum:{s}")
+            print(f"result 0: {s}")
+        dist_dict.append(s)
+    dist_dict = np.array(dist_dict)
+    with open(pretrain_npy_name, 'wb') as f:
+        np.save(f, dist_dict)
+    print("dist_dict_pretrain saved!")
 
 
 print("constructing 1D-CNN models...")
@@ -315,7 +316,7 @@ def location_based_sampling2(classifier, X_pool):
         if _query_idx not in xs_idx:
             query_idx = _query_idx
             break
-    return [query_idx], X_pool[query_idx]
+    return [query_idx], [X_pool[query_idx]]
 
 
 # 1. Fit on original training data
@@ -358,7 +359,7 @@ print("Begin active learning process...")
 # print("dist_dict_pretrain saved!")
 
 n_queries = 1700
-mode = "lb2"
+mode = "uncertainty"
 #queries_num = np.linspace(100, 3500, 35)
 mse_dict = {}
 all_chosen_samples_reg = []
@@ -396,11 +397,16 @@ pool_y_al = pool_y_al[["x", "y", "z"]].values
 best_mse = 999999999
 best_iteration = -1
 while i <= n_queries:
-    # get_prediction_precision(regressor, x_test_ae_cnn, y_test_ae_cnn)
+    pool_x_al_unchosen = np.array([t for idx,t in enumerate(list(pool_x_al)) if idx not in xs_idx])
     if mode not in ["lb", "random"]:
-        query_idx, query_instance = classifier.query(pool_x_al)
+        query_idx, query_instance = classifier.query(pool_x_al_unchosen)
     else:
-        query_idx, query_instance = regressor.query(pool_x_al)
+        query_idx, query_instance = regressor.query(pool_x_al_unchosen)
+    query_idx = -1
+    for idx,x in enumerate(pool_x_al):
+        if np.array_equal(x, query_instance[0]):
+            query_idx = idx
+            break
     _x, _y_reg, _y_clf = pool_x_al[query_idx], pool_y_al[query_idx], pool_y_cluster[query_idx]
     # pool_x_al = np.delete(pool_x_al, query_idx, axis=0)
     # pool_y_al = np.delete(pool_y_al, query_idx, axis=0)
@@ -412,7 +418,9 @@ while i <= n_queries:
     xs.append(_x)
     ys_reg.append(_y_reg)
     ys_clf.append(_y_clf)
-    xs_idx.append(query_idx[0])
+    if not type(query_idx) == int:
+        query_idx = query_idx[0]
+    xs_idx.append(query_idx)
 
     if i % 50 == 0 and i > 0:
         # batch mode AL teach
