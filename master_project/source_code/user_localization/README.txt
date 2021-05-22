@@ -1,3 +1,5 @@
+Source codes for the user localization scenario. Problem definition can be found at: http://ctw2020.ieee-ctw.org/wp-content/uploads/sites/94/2020/02/CTW2020-Localization-Competition.pdf
+
 Two files are included in the folder:
 1. preprocessing.py: Data loading, preprocessing and dimensionality reduction.
 2. localization.py: Training base learner model, implementing active learning pipeline and saving results.
