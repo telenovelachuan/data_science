@@ -60,6 +60,94 @@ print(f"h_est shape: {h_est.shape}")
 squares = np.square(np.absolute(h_est))
 
 # denoising using autoencoder
+# 1. denoising dataset1
+noise = (y[0] - y[8192]) / math.sqrt(2)
+noise_real, noise_imag = np.real(noise), np.imag(noise)
+noise_var_real, noise_var_imag = np.var(noise_real), np.var(noise_imag)
+std_real, std_imag = math.sqrt(noise_var_real), math.sqrt(noise_var_imag)
+
+real_noise = np.random.normal(loc=0.0, scale=std_real, size=y.shape)
+imag_noise = np.random.normal(loc=0.0, scale=std_imag, size=y.shape)
+complex_noise = real_noise + imag_noise * 1j
+y_noised = y + complex_noise
+
+# train test split real part
+real_x_train, real_x_test , real_y_train , real_y_test = train_test_split(np.real(y_noised), np.real(y), test_size=0.2, random_state=42)
+real_x_train = real_x_train * 1e10
+real_x_test = real_x_test * 1e10
+real_y_train = real_y_train * 1e10
+real_y_test = real_y_test * 1e10
+
+# construct autoencoder
+early_stopper = EarlyStopping(
+    monitor="val_loss",
+    mode="auto",
+    patience=10
+)
+def ae_model(input_shape, opt=Adam(1e-3), activation=ReLU, init="lecun_uniform"):
+    model = Sequential()
+    #model.add(Flatten())
+    model.add(Dense(256, kernel_initializer=init))
+    model.add(activation())
+    #model.add(BatchNormalization())
+    #model.add(Dropout(rate=dropout_rate))
+    model.add(Dense(128, kernel_initializer=init))
+    model.add(activation())
+    #model.add(BatchNormalization())
+    #model.add(Dropout(rate=dropout_rate))
+    model.add(Dense(64, kernel_initializer=init))
+    model.add(activation())
+    #model.add(BatchNormalization())
+    
+    model.add(Dense(128, kernel_initializer=init))
+    model.add(activation())
+    #model.add(BatchNormalization())
+    
+    model.add(Dense(256, kernel_initializer=init))
+    model.add(activation())
+    #model.add(BatchNormalization())
+
+    model.add(Dense(real_y_train.shape[1]))
+    model.compile(loss="mse", optimizer=opt) 
+    return model
+
+opt = Adamax(learning_rate=0.01, beta_1=0.5, beta_2=0.999, epsilon=1e-07, name="Adamax")
+opt_adam = Adam(0.1)
+opt_RMSprop = RMSprop(learning_rate=0.01,rho=0.9,momentum=0.0,epsilon=1e-07,centered=False,name="RMSprop")
+opt_adagrade = Adagrad(learning_rate=0.01,initial_accumulator_value=0.1,epsilon=1e-07,name="Adagrad")
+opt_nadam = Nadam(learning_rate=0.01, beta_1=0.9, beta_2=0.999, epsilon=1e-07, name="Nadam")
+opt_ftrl= Ftrl(
+      learning_rate=0.01,
+      learning_rate_power=-0.5,
+      initial_accumulator_value=0.1,
+      l1_regularization_strength=0.0,
+      l2_regularization_strength=0.0,
+      name="Ftrl",
+      l2_shrinkage_regularization_strength=0.0,
+)
+ae_real = ae_model(real_x_train.shape[1:], opt=opt_adagrade)
+hist_real = ae_real.fit(real_x_train, real_y_train , epochs=300, validation_data=(real_x_test, real_y_test),
+                  callbacks=[early_stopper], batch_size=16, verbose=1)
+
+# train test split imag part
+imag_x_train, imag_x_test , imag_y_train , imag_y_test = train_test_split(np.imag(y_noised), np.imag(y), test_size=0.2, random_state=42)
+imag_x_train = imag_x_train * 1e10
+imag_x_test = imag_x_test * 1e10
+imag_y_train = imag_y_train * 1e10
+imag_y_test = imag_y_test * 1e10
+
+ae_imag = ae_model(imag_x_train.shape[1:], opt=opt_adagrade)
+hist_imag = ae_imag.fit(imag_x_train, imag_y_train , epochs=300, validation_data=(imag_x_test, imag_y_test),
+                  callbacks=[early_stopper], batch_size=16, verbose=1)
+
+# generate results and save to disk
+denoised_real = ae_real.predict(np.real(y) * 1e10) / 1e10
+denoised_imag = ae_imag.predict(np.imag(y) * 1e10) / 1e10
+denoised_y = denoised_real + denoised_imag * 1j
+with open('denoised_y.npy', 'wb') as f:
+    np.save(f, denoised_y)
+
+# 2. denoising dataset2  
 # adjust the structure of dataset2 for denoising
 y2_reshaped = [] # 4096 x 500 for each user
 os.mkdir("y2_reshape")
@@ -96,7 +184,7 @@ for i in range(50):
   print(f"user{i} noise added")
 
 # building autoencoder
-def ae_model(input_shape, opt=Adam(1e-3), activation=ReLU, init="lecun_uniform"):
+def ae_model(input_shape, output_shape, opt=Adam(1e-3), activation=ReLU, init="lecun_uniform"):
     model = Sequential()
     #model.add(Flatten())
     model.add(Dense(256, kernel_initializer=init))
@@ -119,28 +207,17 @@ def ae_model(input_shape, opt=Adam(1e-3), activation=ReLU, init="lecun_uniform")
     model.add(activation())
     #model.add(BatchNormalization())
 
-    model.add(Dense(real_y2_train.shape[1]))
+    model.add(Dense(output_shape))
     model.compile(loss="mse", optimizer=opt) 
     return model
 
 # denoising
-opt = Adamax(learning_rate=0.01, beta_1=0.5, beta_2=0.999, epsilon=1e-07, name="Adamax")
-opt_adam = Adam(0.1)
-opt_RMSprop = RMSprop(learning_rate=0.01,rho=0.9,momentum=0.0,epsilon=1e-07,centered=False,name="RMSprop")
-opt_adagrade = Adagrad(learning_rate=0.01,initial_accumulator_value=0.1,epsilon=1e-07,name="Adagrad")
-opt_nadam = Nadam(learning_rate=0.01, beta_1=0.9, beta_2=0.999, epsilon=1e-07, name="Nadam")
-opt_ftrl= Ftrl(
-      learning_rate=0.01,
-      learning_rate_power=-0.5,
-      initial_accumulator_value=0.1,
-      l1_regularization_strength=0.0,
-      l2_regularization_strength=0.0,
-      name="Ftrl",
-      l2_shrinkage_regularization_strength=0.0,
-)
+
 # for saving results to disk
 os.mkdir("y2_denoised_imag")
 os.mkdir("y2_denoised_real")
+os.mkdir("y2_denoised")
+
 def denoise_user(user_no):
 
   u0_noised = np.load(f"y2_noised/user{user_no}.npy")
@@ -166,7 +243,7 @@ def denoise_user(user_no):
       patience=5
   )
   # real part
-  u0_real = ae_model(real_x2_train.shape[1:], 
+  u0_real = ae_model(real_x2_train.shape[1:], real_y2_train.shape[1],
                 #opt=Adam(5e-2),
                 opt=opt_adagrade
               )
@@ -180,7 +257,7 @@ def denoise_user(user_no):
   print(f"user{i} real done: {u0_hist_real.history['val_loss'][-1]}")
 
   # imag part
-  u0_imag = ae_model(imag_x2_train.shape[1:], 
+  u0_imag = ae_model(imag_x2_train.shape[1:], imag_y2_train.shape[1],
                 #opt=Adam(5e-2),
                 opt=opt_adagrade
               )
@@ -188,8 +265,11 @@ def denoise_user(user_no):
                     callbacks=[early_stopper],
                     batch_size=16, verbose=0)
   denoised_imag = u0_imag.predict(np.imag(u0_orig) * 1e10) / 1e10
+  denoised_y2 = denoised_real + denoised_imag * 1j
   with open(f'y2_denoised_imag/user{i}.npy', 'wb') as f:
     np.save(f, denoised_imag)
+  with open(f'y2_denoised/user{i}.npy', 'wb') as f:
+    np.save(f, denoised_y2)
   print(f"user{i} imag done: {u0_hist_imag.history['val_loss'][-1]}")
 
 for i in range(50):
