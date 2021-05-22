@@ -1,4 +1,24 @@
+import os
+from matplotlib import pyplot as plt
+import seaborn as sns
+import plotly
+from plotly.offline import download_plotlyjs, init_notebook_mode, iplot
+from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from sklearn.cluster import KMeans
+import gc
 
+from tensorflow.keras.models import Model, Sequential, load_model
+from tensorflow.keras.layers import Input, Activation, AveragePooling2D, Conv2DTranspose, ZeroPadding2D
+from tensorflow.keras.layers import Dense, Dropout, Conv2D, Flatten, Conv1D, BatchNormalization
+from tensorflow.keras.optimizers import *
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+import keras
+import keras.backend as K
+from modAL.models import ActiveLearner
+from modAL.uncertainty import entropy_sampling, margin_sampling, uncertainty_sampling
+import copy
 import pandas as pd
 import numpy as np
 from numpy import inf
@@ -12,12 +32,11 @@ import h5py
 # load data from file_1 - file_9.hdf4
 result = None
 all_pos = None
-CTW_labelled = "/home/c693s270/"
 
 for i in range(9):
     idx = i + 1
     print(f"handling file_{idx}.hdf5...")
-    data_file = CTW_labelled + "file_" + str(idx) + ".hdf5"
+    data_file =  "file_" + str(idx) + ".hdf5"
     H_Re, H_Im, SNR, Pos = get_data(data_file)
     n = H_Re.shape[0]
     print(f"shape[0:{n}")
